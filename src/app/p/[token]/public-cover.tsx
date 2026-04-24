@@ -137,7 +137,7 @@ export function PublicCover({
 
   return (
     <div className="flex min-h-screen flex-col bg-muted/30">
-      <div className="relative h-72 w-full overflow-hidden bg-gradient-to-br from-primary/20 to-muted">
+      <div className="relative h-64 w-full overflow-hidden bg-gradient-to-br from-primary/20 to-muted sm:h-72">
         {coverUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -151,16 +151,16 @@ export function PublicCover({
           </div>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-        <div className="absolute inset-x-0 bottom-0 px-6 py-6 text-white">
+        <div className="absolute inset-x-0 bottom-0 px-4 py-5 text-white sm:px-6 sm:py-6">
           <div className="mx-auto max-w-5xl">
             <p className="text-xs uppercase tracking-wider text-white/80">
               Checklist do projeto
             </p>
-            <h1 className="mt-1 text-3xl font-bold tracking-tight sm:text-4xl">
+            <h1 className="mt-1 break-words text-2xl font-bold tracking-tight sm:text-4xl">
               {project.name}
             </h1>
             {project.description ? (
-              <p className="mt-2 max-w-2xl text-sm text-white/90">
+              <p className="mt-2 line-clamp-3 max-w-2xl text-sm text-white/90 sm:line-clamp-none">
                 {project.description}
               </p>
             ) : null}
@@ -168,16 +168,16 @@ export function PublicCover({
         </div>
       </div>
 
-      <div className="flex-1 px-6 py-10">
+      <div className="flex-1 px-4 py-6 sm:px-6 sm:py-10">
         <div className="mx-auto max-w-5xl space-y-8">
         {designers.length > 0 ? (
-          <section className="pt-0 mt-[40px]">
+          <section className="pt-0 sm:mt-[40px]">
             {officeLogoUrl && (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={officeLogoUrl}
                 alt={officeName ?? "Logo"}
-                className="mt-[47px] mb-[47px] h-8 w-auto object-contain"
+                className="mb-6 h-8 max-w-full object-contain sm:mb-[47px] sm:mt-[47px]"
               />
             )}
             <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
@@ -233,7 +233,7 @@ export function PublicCover({
                 return (
                   <div
                     key={d.id}
-                    className="flex flex-col items-center gap-2 rounded-xl border bg-background px-5 py-4 text-sm font-medium shadow-sm min-w-[80px]"
+                    className="flex min-w-[80px] flex-1 flex-col items-center gap-2 rounded-xl border bg-background px-4 py-4 text-center text-sm font-medium shadow-sm sm:flex-none sm:px-5"
                   >
                     <Icon
                       className="h-6 w-6"
@@ -248,13 +248,13 @@ export function PublicCover({
           </section>
         ) : null}
 
-        <section className="rounded-lg border bg-background p-6 shadow-sm mb-8">
-          <div className="mt-4 flex justify-end">
+        <section className="mb-8 rounded-lg border bg-background p-4 shadow-sm sm:p-6">
+          <div className="mt-2 flex justify-stretch sm:mt-4 sm:justify-end">
             <Button
               size="lg"
               onClick={handleStart}
               disabled={formCount === 0}
-              className="group animate-glow-pulse transition-all duration-200 hover:scale-105 active:scale-95"
+              className="group w-full animate-glow-pulse transition-all duration-200 hover:scale-105 active:scale-95 sm:w-auto"
             >
               <Play className="mr-2 h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
               Iniciar preenchimento
@@ -278,7 +278,7 @@ export function PublicCover({
               {history.map((item) => (
                 <div
                   key={item.id}
-                  className="flex items-center gap-3 px-4 py-3"
+                  className="flex flex-wrap items-center gap-3 px-4 py-3 sm:flex-nowrap"
                 >
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
                     {initials(item.client_name, item.client_email)}
@@ -293,13 +293,15 @@ export function PublicCover({
                       {formatDateTime(item.submitted_at)}
                     </div>
                   </div>
-                  <PublicSubmissionSummaryDialog
-                    token={token}
-                    submissionId={item.id}
-                    clientName={item.client_name}
-                    templateName={item.template_name}
-                    projectName={project.name}
-                  />
+                  <div className="w-full sm:w-auto">
+                    <PublicSubmissionSummaryDialog
+                      token={token}
+                      submissionId={item.id}
+                      clientName={item.client_name}
+                      templateName={item.template_name}
+                      projectName={project.name}
+                    />
+                  </div>
                 </div>
               ))}
             </div>

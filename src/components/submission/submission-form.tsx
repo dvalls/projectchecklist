@@ -225,16 +225,16 @@ export function SubmissionForm({
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{template.name}</CardTitle>
+    <Card className="overflow-hidden">
+      <CardHeader className="p-4 sm:p-6">
+        <CardTitle className="text-lg sm:text-xl">{template.name}</CardTitle>
         {template.description ? (
           <p className="text-sm text-muted-foreground">
             {template.description}
           </p>
         ) : null}
       </CardHeader>
-      <CardContent className="space-y-8">
+      <CardContent className="space-y-8 p-4 pt-0 sm:p-6 sm:pt-0">
         {fields.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             Este formulário não possui campos.
@@ -256,15 +256,20 @@ export function SubmissionForm({
           />
         )}
 
-        <div className="flex justify-end gap-2 border-t pt-4">
+        <div className="flex flex-col-reverse gap-2 border-t pt-4 sm:flex-row sm:justify-end">
           <Button
             variant="outline"
             onClick={() => handleSubmit(true)}
             disabled={isSubmitting}
+            className="w-full sm:w-auto"
           >
             Salvar rascunho
           </Button>
-          <Button onClick={() => handleSubmit(false)} disabled={isSubmitting}>
+          <Button
+            onClick={() => handleSubmit(false)}
+            disabled={isSubmitting}
+            className="w-full sm:w-auto"
+          >
             <Send className="mr-2 h-4 w-4" />
             {isSubmitting ? "Enviando..." : "Enviar"}
           </Button>
@@ -323,10 +328,12 @@ function StandardRenderer({
               </div>
             ) : null}
             <div
-              className="grid gap-4"
-              style={{
-                gridTemplateColumns: `repeat(${section.columns}, minmax(0, 1fr))`,
-              }}
+              className="grid grid-cols-1 gap-4 sm:[grid-template-columns:var(--section-columns)]"
+              style={
+                {
+                  "--section-columns": `repeat(${section.columns}, minmax(0, 1fr))`,
+                } as React.CSSProperties
+              }
             >
               {sectionFields.map((field) => {
                 const key = makeFieldKey(field.id);
@@ -335,12 +342,15 @@ function StandardRenderer({
                 return (
                   <div
                     key={field.id}
-                    style={{
-                      gridColumn: `span ${Math.min(
-                        field.column_span,
-                        section.columns,
-                      )}`,
-                    }}
+                    className="min-w-0 sm:[grid-column:var(--field-span)]"
+                    style={
+                      {
+                        "--field-span": `span ${Math.min(
+                          field.column_span,
+                          section.columns,
+                        )}`,
+                      } as React.CSSProperties
+                    }
                   >
                     <FieldInput
                       field={field}

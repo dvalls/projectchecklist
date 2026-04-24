@@ -391,15 +391,15 @@ function PublicSubmissionForm({
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{template.name}</CardTitle>
+    <Card className="overflow-hidden">
+      <CardHeader className="p-4 sm:p-6">
+        <CardTitle className="text-lg sm:text-xl">{template.name}</CardTitle>
         {template.description ? (
-          <p className="text-sm text-muted-foreground">
+          <p className="break-words text-sm text-muted-foreground">
             {template.description}
           </p>
         ) : null}
-        <p className="pt-2 text-xs text-muted-foreground">
+        <p className="break-words pt-2 text-xs text-muted-foreground">
           Respondendo como <strong>{clientName}</strong> ({clientEmail})
         </p>
         {progress.total > 0 ? (
@@ -417,7 +417,7 @@ function PublicSubmissionForm({
           </p>
         ) : null}
       </CardHeader>
-      <CardContent className="space-y-8">
+      <CardContent className="space-y-8 p-4 pt-0 sm:p-6 sm:pt-0">
         {hasAnyPrevious ? (
           <div
             className={
@@ -465,8 +465,12 @@ function PublicSubmissionForm({
           />
         )}
 
-        <div className="flex justify-end gap-2 border-t pt-4">
-          <Button onClick={handleSubmit} disabled={isSubmitting}>
+        <div className="flex flex-col gap-2 border-t pt-4 sm:flex-row sm:justify-end">
+          <Button
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+            className="w-full sm:w-auto"
+          >
             <Send className="mr-2 h-4 w-4" />
             {isSubmitting ? "Enviando..." : "Enviar"}
           </Button>
@@ -529,10 +533,12 @@ function StandardRenderer({
               </div>
             ) : null}
             <div
-              className="grid gap-4"
-              style={{
-                gridTemplateColumns: `repeat(${section.columns}, minmax(0, 1fr))`,
-              }}
+              className="grid grid-cols-1 gap-4 md:[grid-template-columns:var(--section-columns)]"
+              style={
+                {
+                  "--section-columns": `repeat(${section.columns}, minmax(0, 1fr))`,
+                } as React.CSSProperties
+              }
             >
               {sectionFields.map((field) => {
                 const key = makeFieldKey(field.id);
@@ -543,12 +549,15 @@ function StandardRenderer({
                 return (
                   <div
                     key={field.id}
-                    style={{
-                      gridColumn: `span ${Math.min(
-                        field.column_span,
-                        section.columns,
-                      )}`,
-                    }}
+                    className="md:[grid-column:var(--field-span)]"
+                    style={
+                      {
+                        "--field-span": `span ${Math.min(
+                          field.column_span,
+                          section.columns,
+                        )}`,
+                      } as React.CSSProperties
+                    }
                   >
                     <FieldInput
                       field={field}
@@ -599,7 +608,10 @@ function MatrixRenderer({
                 {section.title}
               </div>
             ) : null}
-            <div className="overflow-x-auto">
+            <p className="text-[11px] text-muted-foreground md:hidden">
+              Deslize a tabela para o lado para ver todos os ambientes.
+            </p>
+            <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
               <table className="w-full min-w-[720px] border-separate border-spacing-0">
                 <thead>
                   <tr>
@@ -857,7 +869,7 @@ function FieldInput({
               <label
                 key={c.value}
                 className={
-                  "flex items-center gap-2 text-sm " +
+                  "flex min-w-0 items-center gap-2 text-sm " +
                   (locked ? "cursor-not-allowed" : "cursor-pointer")
                 }
               >
@@ -871,12 +883,12 @@ function FieldInput({
                     updateGroup({ ...groupValue, selected: nextSelected });
                   }}
                 />
-                {c.label}
+                <span className="min-w-0 break-words">{c.label}</span>
               </label>
             );
           })}
           {opts.allow_other ? (
-            <div className="flex items-center gap-2 text-sm">
+            <div className="flex flex-col gap-2 text-sm sm:flex-row sm:items-center">
               <Checkbox
                 checked={groupValue.other !== undefined}
                 disabled={locked}
@@ -927,7 +939,7 @@ function FieldInput({
             <label
               key={c.value}
               className={
-                "flex items-center gap-2 text-sm " +
+                "flex min-w-0 items-center gap-2 text-sm " +
                 (locked ? "cursor-not-allowed" : "cursor-pointer")
               }
             >
@@ -938,7 +950,7 @@ function FieldInput({
                 disabled={locked}
                 onChange={() => onChange({ value: c.value })}
               />
-              {c.label}
+              <span className="min-w-0 break-words">{c.label}</span>
             </label>
           ))}
         </div>
