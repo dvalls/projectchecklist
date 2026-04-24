@@ -192,9 +192,15 @@ function PublicSubmissionForm({
   allowResubmit: boolean;
 }) {
   const isMatrix = template.layout_mode === "matrix";
-  const environments = (template.environments ?? []) as string[];
+  const environments = useMemo(
+    () => (template.environments ?? []) as string[],
+    [template.environments],
+  );
 
-  const envScope = isMatrix ? environments : [undefined as string | undefined];
+  const envScope = useMemo(
+    () => (isMatrix ? environments : [undefined as string | undefined]),
+    [environments, isMatrix],
+  );
 
   function getPrevious(fieldId: string, env: string | undefined) {
     if (env) {
