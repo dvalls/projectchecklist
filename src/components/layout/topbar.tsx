@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 import { signOut } from "@/app/(auth)/login/actions";
+import { SidebarToggle } from "./sidebar-toggle";
 
 export function Topbar({ userEmail }: { userEmail: string }) {
   const initials =
@@ -22,7 +23,9 @@ export function Topbar({ userEmail }: { userEmail: string }) {
       .join("") || "?";
 
   return (
-    <header className="sticky top-0 z-10 flex h-16 items-center justify-end gap-3 border-b bg-background px-6">
+    <header className="sticky top-0 z-10 flex h-16 items-center gap-3 border-b bg-background px-6">
+      <SidebarToggle />
+      <div className="ml-auto flex items-center gap-3">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
@@ -55,6 +58,7 @@ export function Topbar({ userEmail }: { userEmail: string }) {
           </form>
         </DropdownMenuContent>
       </DropdownMenu>
+      </div>
     </header>
   );
 }

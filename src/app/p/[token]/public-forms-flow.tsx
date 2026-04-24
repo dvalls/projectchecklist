@@ -1,16 +1,22 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
-import { Send } from "lucide-react";
+import { useEffect, useMemo, useState, useTransition } from "react";
+import { CheckCircle2, Send } from "lucide-react";
 import { toast } from "sonner";
 
-import { ImageDisplayField } from "@/components/form-builder/field-preview";
 import {
-  ChoiceLabel,
-  RecommendedBadge,
-} from "@/components/form-builder/shared";
+  clearDraftProgress,
+  writeDraftProgress,
+} from "./draft-progress";
+
+import { ImageDisplayField } from "@/components/form-builder/field-preview";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,15 +38,19 @@ import type {
 } from "@/lib/supabase/types";
 
 import {
-  createSubmission,
-  type SubmissionMatrixValueInput,
-  type SubmissionValueInput,
-} from "@/app/(dashboard)/submissions/actions";
+  createPublicSubmission,
+  type PublicSubmissionMatrixValueInput,
+  type PublicSubmissionValueInput,
+} from "./actions";
 
 interface Props {
+  token: string;
   template: ClFormTemplate;
   sections: ClFormSection[];
   fields: ClFormField[];
+  identity: { client_name: string; client_email: string };
+  onDone?: () => void;
+  backHref?: string;
 }
 
 interface CheckboxGroupValue {
@@ -104,7 +114,7 @@ function evaluateVisible(
         return parsed.selected.length > 0 || Boolean(parsed.other);
       }
     } catch {
-      // not JSON, fallthrough
+      // not JSON
     }
     return true;
   }
@@ -129,11 +139,75 @@ function evaluateVisible(
   return true;
 }
 
-export function SubmissionForm({
+type Step = "form" | "done";
+
+export function PublicFormsFlow({
+  token,
   template,
   sections,
   fields,
+  identity,
+  onDone,
+  backHref,
 }: Props) {
+  const [step, setStep] = useState<Step>("form");
+  const clientName = identity.client_name;
+  const clientEmail = identity.client_email;
+
+  if (step === "done") {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center justify-center gap-3 py-12 text-center">
+          <CheckCircle2 className="h-12 w-12 text-emerald-500" />
+          <h2 className="text-xl font-semibold">
+            Obrigado, {clientName.split(" ")[0]}!
+          </h2>
+          <p className="max-w-md text-sm text-muted-foreground">
+            Sua resposta foi registrada com sucesso.
+          </p>
+          {backHref ? (
+            <Button asChild variant="outline" className="mt-2">
+              <a href={backHref}>Voltar para a lista</a>
+            </Button>
+          ) : null}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <PublicSubmissionForm
+      token={token}
+      template={template}
+      sections={sections}
+      fields={fields}
+      clientName={clientName}
+      clientEmail={clientEmail}
+      onSuccess={() => {
+        setStep("done");
+        onDone?.();
+      }}
+    />
+  );
+}
+
+function PublicSubmissionForm({
+  token,
+  template,
+  sections,
+  fields,
+  clientName,
+  clientEmail,
+  onSuccess,
+}: {
+  token: string;
+  template: ClFormTemplate;
+  sections: ClFormSection[];
+  fields: ClFormField[];
+  clientName: string;
+  clientEmail: string;
+  onSuccess: () => void;
+}) {
   const isMatrix = template.layout_mode === "matrix";
   const environments = (template.environments ?? []) as string[];
 
@@ -153,7 +227,9 @@ export function SubmissionForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fields, isMatrix]);
 
-  const [values, setValues] = useState<Record<string, FieldValue>>(initialValues);
+  const [values, setValues] = useState<Record<string, FieldValue>>(
+    initialValues,
+  );
   const [isSubmitting, startSubmitting] = useTransition();
 
   function setFieldValue(key: string, patch: Partial<FieldValue>) {
@@ -163,9 +239,49 @@ export function SubmissionForm({
     }));
   }
 
-  function handleSubmit(asDraft: boolean) {
-    const inputs: SubmissionValueInput[] = [];
-    const matrixInputs: SubmissionMatrixValueInput[] = [];
+  function isFieldAnswered(field: ClFormField, v: FieldValue | undefined) {
+    if (field.type === "checkbox") return v?.value === "true";
+    if (field.type === "checkbox_group") {
+      const parsed = parseCheckboxGroup(v?.value ?? null);
+      return parsed.selected.length > 0 || Boolean(parsed.other);
+    }
+    return Boolean(v?.value && v.value.trim() !== "");
+  }
+
+  const progress = useMemo(() => {
+    let total = 0;
+    let done = 0;
+    for (const env of envScope) {
+      for (const f of fields) {
+        if (isDisplayOnly(f.type)) continue;
+        if (!f.required) continue;
+        total += 1;
+        const key = makeFieldKey(f.id, env);
+        const visible = evaluateVisible(f.visible_when, values, env);
+        if (!visible) {
+          done += 1;
+          continue;
+        }
+        if (isFieldAnswered(f, values[key])) {
+          done += 1;
+        }
+      }
+    }
+    return { done, total };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fields, values, envScope]);
+
+  useEffect(() => {
+    if (progress.total === 0) return;
+    writeDraftProgress(token, template.id, clientEmail, {
+      done: progress.done,
+      total: progress.total,
+    });
+  }, [progress, token, template.id, clientEmail]);
+
+  function handleSubmit() {
+    const inputs: PublicSubmissionValueInput[] = [];
+    const matrixInputs: PublicSubmissionMatrixValueInput[] = [];
 
     for (const env of envScope) {
       for (const f of fields) {
@@ -174,7 +290,7 @@ export function SubmissionForm({
         const v = values[key];
         const visible = evaluateVisible(f.visible_when, values, env);
 
-        if (f.required && visible && !asDraft) {
+        if (f.required && visible) {
           const missing =
             f.type === "checkbox"
               ? v?.value !== "true"
@@ -209,17 +325,22 @@ export function SubmissionForm({
     }
 
     startSubmitting(async () => {
-      const res = await createSubmission({
+      const res = await createPublicSubmission({
+        token,
         template_id: template.id,
-        project_id: template.project_id,
+        client_name: clientName,
+        client_email: clientEmail,
         values: inputs,
         matrix_values: matrixInputs,
-        asDraft,
       });
 
-      if (res?.error) {
+      if (res && "error" in res && res.error) {
         toast.error(res.error);
+        return;
       }
+
+      clearDraftProgress(token, template.id, clientEmail);
+      onSuccess();
     });
   }
 
@@ -230,6 +351,23 @@ export function SubmissionForm({
         {template.description ? (
           <p className="text-sm text-muted-foreground">
             {template.description}
+          </p>
+        ) : null}
+        <p className="pt-2 text-xs text-muted-foreground">
+          Respondendo como <strong>{clientName}</strong> ({clientEmail})
+        </p>
+        {progress.total > 0 ? (
+          <p className="pt-1 text-xs text-muted-foreground">
+            Obrigatórios:{" "}
+            <strong
+              className={
+                progress.done >= progress.total
+                  ? "text-emerald-600"
+                  : "text-foreground"
+              }
+            >
+              {progress.done}/{progress.total}
+            </strong>
           </p>
         ) : null}
       </CardHeader>
@@ -256,14 +394,7 @@ export function SubmissionForm({
         )}
 
         <div className="flex justify-end gap-2 border-t pt-4">
-          <Button
-            variant="outline"
-            onClick={() => handleSubmit(true)}
-            disabled={isSubmitting}
-          >
-            Salvar rascunho
-          </Button>
-          <Button onClick={() => handleSubmit(false)} disabled={isSubmitting}>
+          <Button onClick={handleSubmit} disabled={isSubmitting}>
             <Send className="mr-2 h-4 w-4" />
             {isSubmitting ? "Enviando..." : "Enviar"}
           </Button>
@@ -574,25 +705,14 @@ function FieldInput({
       ) : null}
 
       {field.type === "checkbox" ? (
-        <div className="space-y-1 pt-1">
-          <div className="flex items-center gap-2">
-            <Checkbox
-              checked={value?.value === "true"}
-              onCheckedChange={(checked) =>
-                onChange({ value: checked ? "true" : "false" })
-              }
-            />
-            <span className="text-sm">{compact ? "Sim" : field.label}</span>
-            {opts.recommended_value ? <RecommendedBadge /> : null}
-          </div>
-          {opts.recommended_value && !compact ? (
-            <p className="text-[11px] text-amber-700">
-              StudioBIM recomenda:{" "}
-              <strong>
-                {opts.recommended_value === "true" ? "Sim" : "Não"}
-              </strong>
-            </p>
-          ) : null}
+        <div className="flex items-center gap-2 pt-1">
+          <Checkbox
+            checked={value?.value === "true"}
+            onCheckedChange={(checked) =>
+              onChange({ value: checked ? "true" : "false" })
+            }
+          />
+          <span className="text-sm">{compact ? "Sim" : field.label}</span>
         </div>
       ) : null}
 
@@ -614,7 +734,7 @@ function FieldInput({
                     updateGroup({ ...groupValue, selected: nextSelected });
                   }}
                 />
-                <ChoiceLabel label={c.label} recommended={c.recommended} />
+                {c.label}
               </label>
             );
           })}
@@ -654,7 +774,7 @@ function FieldInput({
           <SelectContent>
             {choices.map((c) => (
               <SelectItem key={c.value} value={c.value}>
-                <ChoiceLabel label={c.label} recommended={c.recommended} />
+                {c.label}
               </SelectItem>
             ))}
           </SelectContent>
@@ -674,7 +794,7 @@ function FieldInput({
                 checked={value?.value === c.value}
                 onChange={() => onChange({ value: c.value })}
               />
-              <ChoiceLabel label={c.label} recommended={c.recommended} />
+              {c.label}
             </label>
           ))}
         </div>

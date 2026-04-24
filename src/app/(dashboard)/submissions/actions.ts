@@ -11,12 +11,18 @@ export interface SubmissionValueInput {
   image_url: string | null;
 }
 
+export interface SubmissionMatrixValueInput {
+  field_id: string;
+  env_key: string;
+  value: string | null;
+  image_url: string | null;
+}
+
 export interface CreateSubmissionInput {
   template_id: string;
   project_id: string;
-  sequence_id?: string | null;
-  step_id?: string | null;
   values: SubmissionValueInput[];
+  matrix_values?: SubmissionMatrixValueInput[];
   asDraft?: boolean;
 }
 
@@ -35,8 +41,6 @@ export async function createSubmission(input: CreateSubmissionInput) {
     .insert({
       template_id: input.template_id,
       project_id: input.project_id,
-      sequence_id: input.sequence_id ?? null,
-      step_id: input.step_id ?? null,
       submitted_by: user.id,
       status,
       submitted_at: input.asDraft ? null : new Date().toISOString(),
@@ -67,14 +71,24 @@ export async function createSubmission(input: CreateSubmissionInput) {
     }
   }
 
-  revalidatePath(`/projects/${input.project_id}`);
-  if (input.sequence_id) {
-    revalidatePath(`/checklists/${input.sequence_id}`);
+  if (input.matrix_values && input.matrix_values.length > 0) {
+    const rows = input.matrix_values.map((v) => ({
+      submission_id: typedSubmission.id,
+      field_id: v.field_id,
+      env_key: v.env_key,
+      value: v.value,
+      image_url: v.image_url,
+    }));
+
+    const { error: matErr } = await supabase
+      .from("cl_submission_values_matrix")
+      .insert(rows);
+
+    if (matErr) {
+      return { error: matErr.message };
+    }
   }
 
-  if (input.sequence_id) {
-    redirect(`/checklists/${input.sequence_id}`);
-  } else {
-    redirect(`/projects/${input.project_id}`);
-  }
+  revalidatePath(`/projects/${input.project_id}`);
+  redirect(`/projects/${input.project_id}`);
 }

@@ -1,0 +1,183 @@
+"use server";
+
+import { randomBytes } from "node:crypto";
+
+import { revalidatePath } from "next/cache";
+
+import { createClient } from "@/lib/supabase/server";
+
+export async function updateProjectCover(
+  projectId: string,
+  imageUrl: string | null,
+) {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Não autenticado." };
+
+  const { error } = await supabase
+    .from("cl_projects")
+    .update({ image_url: imageUrl })
+    .eq("id", projectId)
+    .eq("created_by", user.id);
+
+  if (error) return { error: error.message };
+
+  revalidatePath(`/projects/${projectId}`);
+  return { success: true };
+}
+
+export async function setProjectDesigners(
+  projectId: string,
+  designerIds: string[],
+) {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Não autenticado." };
+
+  const { data: project } = await supabase
+    .from("cl_projects")
+    .select("id")
+    .eq("id", projectId)
+    .eq("created_by", user.id)
+    .maybeSingle();
+  if (!project) return { error: "Projeto não encontrado." };
+
+  const { error: delErr } = await supabase
+    .from("cl_project_designers")
+    .delete()
+    .eq("project_id", projectId);
+  if (delErr) return { error: delErr.message };
+
+  if (designerIds.length > 0) {
+    const rows = designerIds.map((designer_id, i) => ({
+      project_id: projectId,
+      designer_id,
+      position: i,
+    }));
+    const { error: insErr } = await supabase
+      .from("cl_project_designers")
+      .insert(rows);
+    if (insErr) return { error: insErr.message };
+  }
+
+  revalidatePath(`/projects/${projectId}`);
+  return { success: true };
+}
+
+export async function setTemplatePublic(templateId: string, isPublic: boolean) {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Não autenticado." };
+
+  const { data, error } = await supabase
+    .from("cl_form_templates")
+    .update({ is_public: isPublic })
+    .eq("id", templateId)
+    .select("project_id")
+    .single();
+
+  if (error || !data) {
+    return { error: error?.message ?? "Erro ao atualizar." };
+  }
+  const typed = data as { project_id: string };
+  revalidatePath(`/projects/${typed.project_id}`);
+  return { success: true };
+}
+
+export async function createProjectPublicLink(projectId: string) {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Não autenticado." };
+
+  const { data: project } = await supabase
+    .from("cl_projects")
+    .select("id")
+    .eq("id", projectId)
+    .eq("created_by", user.id)
+    .maybeSingle();
+  if (!project) return { error: "Projeto não encontrado." };
+
+  const token = randomBytes(16).toString("hex");
+
+  const { data, error } = await supabase
+    .from("cl_public_links")
+    .insert({
+      token,
+      project_id: projectId,
+      template_id: null,
+      created_by: user.id,
+      is_active: true,
+    })
+    .select("id, token")
+    .single();
+
+  if (error || !data) {
+    return { error: error?.message ?? "Erro ao criar link." };
+  }
+
+  revalidatePath(`/projects/${projectId}`);
+  return { success: true, link: data as { id: string; token: string } };
+}
+
+export async function setProjectLinkActive(
+  linkId: string,
+  isActive: boolean,
+) {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Não autenticado." };
+
+  const { data, error } = await supabase
+    .from("cl_public_links")
+    .update({ is_active: isActive })
+    .eq("id", linkId)
+    .eq("created_by", user.id)
+    .select("project_id")
+    .single();
+
+  if (error || !data) {
+    return { error: error?.message ?? "Erro ao atualizar." };
+  }
+  const typed = data as { project_id: string };
+  revalidatePath(`/projects/${typed.project_id}`);
+  return { success: true };
+}
+
+export async function deleteProjectLink(linkId: string) {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Não autenticado." };
+
+  const { data: existing } = await supabase
+    .from("cl_public_links")
+    .select("project_id")
+    .eq("id", linkId)
+    .eq("created_by", user.id)
+    .maybeSingle();
+  const typedExisting = existing as { project_id: string } | null;
+
+  const { error } = await supabase
+    .from("cl_public_links")
+    .delete()
+    .eq("id", linkId)
+    .eq("created_by", user.id);
+
+  if (error) return { error: error.message };
+
+  if (typedExisting) {
+    revalidatePath(`/projects/${typedExisting.project_id}`);
+  }
+  return { success: true };
+}

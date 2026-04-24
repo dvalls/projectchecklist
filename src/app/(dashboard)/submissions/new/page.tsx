@@ -3,7 +3,11 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
-import type { ClFormField, ClFormTemplate } from "@/lib/supabase/types";
+import type {
+  ClFormField,
+  ClFormSection,
+  ClFormTemplate,
+} from "@/lib/supabase/types";
 
 import { SubmissionForm } from "@/components/submission/submission-form";
 
@@ -11,8 +15,6 @@ export const dynamic = "force-dynamic";
 
 interface SearchParams {
   template?: string;
-  sequence?: string;
-  step?: string;
 }
 
 export default async function NewSubmissionPage({
@@ -33,21 +35,27 @@ export default async function NewSubmissionPage({
 
   if (!template) notFound();
 
-  const { data: fields } = await supabase
-    .from("cl_form_fields")
-    .select("*")
-    .eq("template_id", templateId)
-    .order("position");
+  const [{ data: sections }, { data: fields }] = await Promise.all([
+    supabase
+      .from("cl_form_sections")
+      .select("*")
+      .eq("template_id", templateId)
+      .order("position"),
+    supabase
+      .from("cl_form_fields")
+      .select("*")
+      .eq("template_id", templateId)
+      .order("position"),
+  ]);
 
   const typedTemplate = template as ClFormTemplate;
+  const typedSections = (sections ?? []) as ClFormSection[];
   const typedFields = (fields ?? []) as ClFormField[];
 
-  const backHref = searchParams.sequence
-    ? `/checklists/${searchParams.sequence}`
-    : `/projects/${typedTemplate.project_id}`;
+  const backHref = `/projects/${typedTemplate.project_id}`;
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
+    <div className="mx-auto max-w-6xl space-y-6">
       <div>
         <Link
           href={backHref}
@@ -60,9 +68,8 @@ export default async function NewSubmissionPage({
 
       <SubmissionForm
         template={typedTemplate}
+        sections={typedSections}
         fields={typedFields}
-        sequenceId={searchParams.sequence}
-        stepId={searchParams.step}
       />
     </div>
   );
