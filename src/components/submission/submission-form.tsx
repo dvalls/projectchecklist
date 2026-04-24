@@ -136,9 +136,15 @@ export function SubmissionForm({
   fields,
 }: Props) {
   const isMatrix = template.layout_mode === "matrix";
-  const environments = (template.environments ?? []) as string[];
+  const environments = useMemo(
+    () => (template.environments ?? []) as string[],
+    [template.environments],
+  );
 
-  const envScope = isMatrix ? environments : [undefined as string | undefined];
+  const envScope = useMemo(
+    () => (isMatrix ? environments : [undefined as string | undefined]),
+    [isMatrix, environments],
+  );
 
   const initialValues = useMemo<Record<string, FieldValue>>(() => {
     const out: Record<string, FieldValue> = {};

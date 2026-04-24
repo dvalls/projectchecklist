@@ -236,7 +236,7 @@ export function PublicCover({
                     className="flex min-w-[80px] flex-1 flex-col items-center gap-2 rounded-xl border bg-background px-4 py-4 text-center text-sm font-medium shadow-sm sm:flex-none sm:px-5"
                   >
                     <Icon
-                      className="h-6 w-6"
+                      className="mx-auto h-6 w-6"
                       style={{ color: d.color }}
                       aria-hidden
                     />
