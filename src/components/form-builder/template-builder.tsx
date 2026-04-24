@@ -2,9 +2,9 @@
 
 import { useMemo, useState, useTransition } from "react";
 import {
+  Group as PanelGroup,
   Panel,
-  PanelGroup,
-  PanelResizeHandle,
+  Separator as PanelResizeHandle,
 } from "react-resizable-panels";
 import {
   DndContext,
@@ -492,11 +492,11 @@ export function TemplateBuilder({
       </div>
 
       <PanelGroup
-        direction="horizontal"
+        orientation="horizontal"
         className="!overflow-visible"
         id="template-builder-panels"
       >
-        <Panel defaultSize={62} minSize={30} id="editor-panel" order={1}>
+        <Panel defaultSize={62} minSize={30} id="editor-panel">
         <div className="min-w-0 space-y-3 pr-2">
           <div className="flex items-center justify-between">
             <div className="text-xs text-muted-foreground">
@@ -660,7 +660,7 @@ export function TemplateBuilder({
           </div>
         </PanelResizeHandle>
 
-        <Panel defaultSize={38} minSize={20} id="preview-panel" order={2}>
+        <Panel defaultSize={38} minSize={20} id="preview-panel">
         <div className="lg:sticky lg:top-28 lg:self-start pl-1">
           <Card className="lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto">
             <CardHeader className="pb-3">
