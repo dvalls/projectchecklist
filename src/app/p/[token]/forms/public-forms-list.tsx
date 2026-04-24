@@ -15,7 +15,8 @@ import {
 import { getDisciplineIcon } from "@/lib/disciplines/icon";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 
 import type {
   ClDiscipline,
@@ -151,6 +152,10 @@ export function PublicFormsList({
   const total = templates.length;
   const done = completedByTemplate.size;
 
+  function formatQuestionCount(count: number, singular: string, plural: string) {
+    return `${count} ${count === 1 ? singular : plural}`;
+  }
+
   function handleLogout() {
     clearIdentity(token);
     router.push(`/p/${token}`);
@@ -222,107 +227,137 @@ export function PublicFormsList({
             {groups.map(({ discipline, templates: groupTemplates }) => {
               const Icon = getDisciplineIcon(discipline?.name);
               return (
-              <section key={discipline?.id ?? "no-discipline"}>
-                <div className="mb-2 flex items-center gap-2">
-                  <Icon
-                    className="h-4 w-4"
-                    style={
-                      discipline ? { color: discipline.color } : undefined
-                    }
-                    aria-hidden
-                  />
-                  <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                    {discipline?.name ?? "Sem disciplina"}
-                  </h2>
-                </div>
-                <div className="grid gap-2 sm:grid-cols-[repeat(auto-fit,minmax(min(100%,27rem),27rem))]">
-                  {groupTemplates.map((t) => {
-                    const completed = completedByTemplate.has(t.id);
-                    const progress = progressByTemplate.get(t.id) ?? {
-                      done: 0,
-                      total: requiredCountByTemplate[t.id] ?? 0,
-                    };
-                    const hasRequired = progress.total > 0;
-                    const isComplete =
-                      completed || (hasRequired && progress.done >= progress.total);
-                    const hasPrevious = Boolean(
-                      hasPreviousByTemplate[t.id],
-                    );
-                    return (
-                      <Link
-                        key={t.id}
-                        href={`/p/${token}/forms/${t.id}`}
-                        className="block"
-                      >
-                        <Card className="h-full transition-colors hover:border-primary/40">
-                          <CardContent className="flex items-center justify-between gap-3 p-4">
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2">
-                                <span className="truncate font-medium">
-                                  {t.name}
-                                </span>
-                                {completed ? (
-                                  <Badge
-                                    variant="outline"
-                                    className="border-emerald-500 text-emerald-600"
-                                  >
-                                    <CheckCircle2 className="mr-1 h-3 w-3" />
-                                    Concluído
-                                  </Badge>
-                                ) : null}
-                              </div>
-                              {t.description ? (
-                                <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
-                                  {t.description}
-                                </p>
-                              ) : null}
-                              {hasRequired || hasPrevious ? (
-                                <div className="mt-2 flex flex-wrap items-center gap-2">
-                                  {hasRequired ? (
+                <section key={discipline?.id ?? "no-discipline"}>
+                  <div className="mb-2 flex items-center gap-2">
+                    <Icon
+                      className="h-4 w-4"
+                      style={
+                        discipline ? { color: discipline.color } : undefined
+                      }
+                      aria-hidden
+                    />
+                    <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                      {discipline?.name ?? "Sem disciplina"}
+                    </h2>
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-[repeat(auto-fit,minmax(min(100%,27rem),27rem))]">
+                    {groupTemplates.map((t) => {
+                      const completed = completedByTemplate.has(t.id);
+                      const progress = progressByTemplate.get(t.id) ?? {
+                        done: 0,
+                        total: requiredCountByTemplate[t.id] ?? 0,
+                      };
+                      const hasRequired = progress.total > 0;
+                      const safeDone = Math.min(progress.done, progress.total);
+                      const remaining = Math.max(progress.total - safeDone, 0);
+                      const progressValue = hasRequired
+                        ? Math.round((safeDone / progress.total) * 100)
+                        : 0;
+                      const isComplete =
+                        completed ||
+                        (hasRequired && safeDone >= progress.total);
+                      const hasPrevious = Boolean(
+                        hasPreviousByTemplate[t.id],
+                      );
+                      return (
+                        <Link
+                          key={t.id}
+                          href={`/p/${token}/forms/${t.id}`}
+                          className="block"
+                        >
+                          <Card className="flex h-full flex-col overflow-hidden transition-colors hover:border-primary/40">
+                            <CardContent className="flex flex-1 items-center justify-between gap-3 p-4">
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="truncate font-medium">
+                                    {t.name}
+                                  </span>
+                                  {completed ? (
                                     <Badge
                                       variant="outline"
-                                      className={
-                                        isComplete
-                                          ? "border-emerald-500 text-emerald-600"
-                                          : progress.done > 0
-                                          ? "border-amber-500 text-amber-600"
-                                          : "text-muted-foreground"
-                                      }
+                                      className="border-emerald-500 text-emerald-600"
                                     >
-                                      {progress.done}/{progress.total}{" "}
-                                      obrigatórios
+                                      <CheckCircle2 className="mr-1 h-3 w-3" />
+                                      Concluído
                                     </Badge>
                                   ) : null}
-                                  {hasPrevious && !completed ? (
-                                    allowResubmit ? (
-                                      <Badge
-                                        variant="outline"
-                                        className="border-amber-500 text-amber-600"
-                                      >
-                                        <History className="mr-1 h-3 w-3" />
-                                        Histórico disponível
-                                      </Badge>
-                                    ) : (
-                                      <Badge
-                                        variant="outline"
-                                        className="border-muted-foreground/30 text-muted-foreground"
-                                      >
-                                        <Lock className="mr-1 h-3 w-3" />
-                                        Herda respostas anteriores
-                                      </Badge>
-                                    )
-                                  ) : null}
                                 </div>
-                              ) : null}
-                            </div>
-                            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-                          </CardContent>
-                        </Card>
-                      </Link>
-                    );
-                  })}
-                </div>
-              </section>
+                                {t.description ? (
+                                  <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
+                                    {t.description}
+                                  </p>
+                                ) : null}
+                                {hasRequired || hasPrevious ? (
+                                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                                    {hasRequired ? (
+                                      <Badge
+                                        variant="outline"
+                                        className={
+                                          isComplete
+                                            ? "border-emerald-500 text-emerald-600"
+                                            : safeDone > 0
+                                            ? "border-amber-500 text-amber-600"
+                                            : "text-muted-foreground"
+                                        }
+                                      >
+                                        {safeDone}/{progress.total} obrigatórios
+                                      </Badge>
+                                    ) : null}
+                                    {hasPrevious && !completed ? (
+                                      allowResubmit ? (
+                                        <Badge
+                                          variant="outline"
+                                          className="border-amber-500 text-amber-600"
+                                        >
+                                          <History className="mr-1 h-3 w-3" />
+                                          Histórico disponível
+                                        </Badge>
+                                      ) : (
+                                        <Badge
+                                          variant="outline"
+                                          className="border-muted-foreground/30 text-muted-foreground"
+                                        >
+                                          <Lock className="mr-1 h-3 w-3" />
+                                          Herda respostas anteriores
+                                        </Badge>
+                                      )
+                                    ) : null}
+                                  </div>
+                                ) : null}
+                              </div>
+                              <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                            </CardContent>
+                            {hasRequired ? (
+                              <CardFooter className="flex-col items-stretch gap-2 border-t bg-muted/20 p-3">
+                                <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+                                  <span>
+                                    {formatQuestionCount(
+                                      safeDone,
+                                      "respondida",
+                                      "respondidas",
+                                    )}
+                                  </span>
+                                  <span>
+                                    {formatQuestionCount(
+                                      remaining,
+                                      "falta",
+                                      "faltam",
+                                    )}
+                                  </span>
+                                </div>
+                                <Progress
+                                  value={progressValue}
+                                  aria-label={`${safeDone} de ${progress.total} perguntas obrigatórias respondidas`}
+                                  className="h-1.5"
+                                />
+                              </CardFooter>
+                            ) : null}
+                          </Card>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </section>
               );
             })}
           </div>
