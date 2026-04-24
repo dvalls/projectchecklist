@@ -2,8 +2,6 @@ import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 
-import { Sidebar } from "@/components/layout/sidebar";
-import { SidebarProvider } from "@/components/layout/sidebar-context";
 import { Topbar } from "@/components/layout/topbar";
 
 export default async function DashboardLayout({
@@ -21,14 +19,11 @@ export default async function DashboardLayout({
   }
 
   return (
-    <SidebarProvider>
-      <div className="flex min-h-screen bg-muted/30">
-        <Sidebar />
-        <div className="flex flex-1 flex-col">
-          <Topbar userEmail={user.email ?? ""} />
-          <main className="flex-1 overflow-y-auto p-6">{children}</main>
-        </div>
+    <div className="min-h-screen bg-muted/30">
+      <Topbar userEmail={user.email ?? ""} />
+      <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col px-4 py-6 sm:px-6 lg:px-8">
+        <main className="flex-1">{children}</main>
       </div>
-    </SidebarProvider>
+    </div>
   );
 }
