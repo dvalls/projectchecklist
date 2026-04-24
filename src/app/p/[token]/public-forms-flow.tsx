@@ -1,17 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
-import { CheckCircle2, History, Lock, Send } from "lucide-react";
-import { toast } from "sonner";
+import { useEffect, useMemo, useState } from "react";
+import { History, Lock } from "lucide-react";
 
 import {
-  clearDraftProgress,
+  readDraftSubmission,
+  type DraftSubmissionMatrixValue,
+  type DraftSubmissionValue,
+  writeDraftSubmission,
   writeDraftProgress,
 } from "./draft-progress";
 
 import { ImageDisplayField } from "@/components/form-builder/field-preview";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -38,11 +39,6 @@ import type {
   VisibleWhen,
 } from "@/lib/supabase/types";
 
-import {
-  createPublicSubmission,
-  type PublicSubmissionMatrixValueInput,
-  type PublicSubmissionValueInput,
-} from "./actions";
 import type {
   PreviousMatrixValuesMap,
   PreviousValuesMap,
@@ -54,8 +50,6 @@ interface Props {
   sections: ClFormSection[];
   fields: ClFormField[];
   identity: { client_name: string; client_email: string };
-  onDone?: () => void;
-  backHref?: string;
   previousByField?: PreviousValuesMap;
   previousByMatrix?: PreviousMatrixValuesMap;
   allowResubmit?: boolean;
@@ -148,44 +142,18 @@ function evaluateVisible(
   return true;
 }
 
-type Step = "form" | "done";
-
 export function PublicFormsFlow({
   token,
   template,
   sections,
   fields,
   identity,
-  onDone,
-  backHref,
   previousByField,
   previousByMatrix,
   allowResubmit = false,
 }: Props) {
-  const [step, setStep] = useState<Step>("form");
   const clientName = identity.client_name;
   const clientEmail = identity.client_email;
-
-  if (step === "done") {
-    return (
-      <Card>
-        <CardContent className="flex flex-col items-center justify-center gap-3 py-12 text-center">
-          <CheckCircle2 className="h-12 w-12 text-emerald-500" />
-          <h2 className="text-xl font-semibold">
-            Obrigado, {clientName.split(" ")[0]}!
-          </h2>
-          <p className="max-w-md text-sm text-muted-foreground">
-            Sua resposta foi registrada com sucesso.
-          </p>
-          {backHref ? (
-            <Button asChild variant="outline" className="mt-2">
-              <a href={backHref}>Voltar para a lista</a>
-            </Button>
-          ) : null}
-        </CardContent>
-      </Card>
-    );
-  }
 
   return (
     <PublicSubmissionForm
@@ -198,10 +166,6 @@ export function PublicFormsFlow({
       previousByField={previousByField ?? {}}
       previousByMatrix={previousByMatrix ?? {}}
       allowResubmit={allowResubmit}
-      onSuccess={() => {
-        setStep("done");
-        onDone?.();
-      }}
     />
   );
 }
@@ -216,7 +180,6 @@ function PublicSubmissionForm({
   previousByField,
   previousByMatrix,
   allowResubmit,
-  onSuccess,
 }: {
   token: string;
   template: ClFormTemplate;
@@ -227,7 +190,6 @@ function PublicSubmissionForm({
   previousByField: PreviousValuesMap;
   previousByMatrix: PreviousMatrixValuesMap;
   allowResubmit: boolean;
-  onSuccess: () => void;
 }) {
   const isMatrix = template.layout_mode === "matrix";
   const environments = (template.environments ?? []) as string[];
@@ -242,12 +204,27 @@ function PublicSubmissionForm({
   }
 
   const initialValues = useMemo<Record<string, FieldValue>>(() => {
+    const savedDraft = readDraftSubmission(token, template.id, clientEmail);
+    const savedValues = new Map(
+      savedDraft?.values.map((v) => [makeFieldKey(v.field_id), v.value]) ?? [],
+    );
+    const savedMatrixValues = new Map(
+      savedDraft?.matrix_values.map((v) => [
+        makeFieldKey(v.field_id, v.env_key),
+        v.value,
+      ]) ?? [],
+    );
     const out: Record<string, FieldValue> = {};
     for (const f of fields) {
       if (isDisplayOnly(f.type)) continue;
       for (const env of envScope) {
+        const saved = env
+          ? savedMatrixValues.get(makeFieldKey(f.id, env))
+          : savedValues.get(makeFieldKey(f.id));
         const prev = getPrevious(f.id, env);
-        if (prev && prev.value !== null) {
+        if (saved !== undefined && (allowResubmit || !prev)) {
+          out[makeFieldKey(f.id, env)] = { value: saved };
+        } else if (prev && prev.value !== null) {
           out[makeFieldKey(f.id, env)] = { value: prev.value };
         } else {
           out[makeFieldKey(f.id, env)] = {
@@ -258,12 +235,20 @@ function PublicSubmissionForm({
     }
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fields, isMatrix, previousByField, previousByMatrix]);
+  }, [
+    fields,
+    isMatrix,
+    token,
+    template.id,
+    clientEmail,
+    allowResubmit,
+    previousByField,
+    previousByMatrix,
+  ]);
 
   const [values, setValues] = useState<Record<string, FieldValue>>(
     initialValues,
   );
-  const [isSubmitting, startSubmitting] = useTransition();
 
   function setFieldValue(key: string, patch: Partial<FieldValue>) {
     setValues((prev) => ({
@@ -315,18 +300,9 @@ function PublicSubmissionForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fields, values, envScope]);
 
-  useEffect(() => {
-    if (progress.total === 0) return;
-    writeDraftProgress(token, template.id, clientEmail, {
-      done: progress.done,
-      total: progress.total,
-    });
-  }, [progress, token, template.id, clientEmail]);
-
-  function handleSubmit() {
-    const inputs: PublicSubmissionValueInput[] = [];
-    const matrixInputs: PublicSubmissionMatrixValueInput[] = [];
-
+  const draftSubmission = useMemo(() => {
+    const inputs: DraftSubmissionValue[] = [];
+    const matrixInputs: DraftSubmissionMatrixValue[] = [];
     for (const env of envScope) {
       for (const f of fields) {
         if (isDisplayOnly(f.type)) continue;
@@ -345,10 +321,7 @@ function PublicSubmissionForm({
                 })()
               : !v?.value;
           if (missing) {
-            toast.error(
-              `${f.label}${env ? ` (${env})` : ""}: obrigatório.`,
-            );
-            return;
+            continue;
           }
         }
 
@@ -369,26 +342,17 @@ function PublicSubmissionForm({
         }
       }
     }
+    return { values: inputs, matrix_values: matrixInputs };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fields, values, envScope, allowResubmit, previousByField, previousByMatrix]);
 
-    startSubmitting(async () => {
-      const res = await createPublicSubmission({
-        token,
-        template_id: template.id,
-        client_name: clientName,
-        client_email: clientEmail,
-        values: inputs,
-        matrix_values: matrixInputs,
-      });
-
-      if (res && "error" in res && res.error) {
-        toast.error(res.error);
-        return;
-      }
-
-      clearDraftProgress(token, template.id, clientEmail);
-      onSuccess();
+  useEffect(() => {
+    writeDraftProgress(token, template.id, clientEmail, {
+      done: progress.done,
+      total: progress.total,
     });
-  }
+    writeDraftSubmission(token, template.id, clientEmail, draftSubmission);
+  }, [progress, draftSubmission, token, template.id, clientEmail]);
 
   return (
     <Card>
@@ -465,11 +429,9 @@ function PublicSubmissionForm({
           />
         )}
 
-        <div className="flex justify-end gap-2 border-t pt-4">
-          <Button onClick={handleSubmit} disabled={isSubmitting}>
-            <Send className="mr-2 h-4 w-4" />
-            {isSubmitting ? "Enviando..." : "Enviar"}
-          </Button>
+        <div className="flex justify-end gap-2 border-t pt-4 text-xs text-muted-foreground">
+          Suas respostas são salvas automaticamente. Volte à lista para enviar
+          todos os formulários juntos.
         </div>
       </CardContent>
     </Card>
