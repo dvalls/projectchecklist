@@ -5,6 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import type { ClDesigner, ClProjectDesigner } from "@/lib/supabase/types";
 
+import { ProjectBehaviorSettings } from "../project-behavior-settings";
 import { ProjectCoverSettings } from "../project-cover-settings";
 import { ProjectDesignersPanel } from "../project-designers-panel";
 
@@ -67,6 +68,11 @@ export default async function ProjectSettingsPage({
         projectId={project.id}
         initialImageUrl={project.image_url ?? null}
         publicBaseUrl={publicBaseUrl}
+      />
+
+      <ProjectBehaviorSettings
+        projectId={project.id}
+        initialAllow={Boolean(project.allow_resubmit_answers)}
       />
 
       <ProjectDesignersPanel

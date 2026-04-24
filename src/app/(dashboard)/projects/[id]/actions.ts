@@ -28,6 +28,29 @@ export async function updateProjectCover(
   return { success: true };
 }
 
+export async function updateProjectAllowResubmit(
+  projectId: string,
+  allow: boolean,
+) {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Não autenticado." };
+
+  const { error } = await supabase
+    .from("cl_projects")
+    .update({ allow_resubmit_answers: allow })
+    .eq("id", projectId)
+    .eq("created_by", user.id);
+
+  if (error) return { error: error.message };
+
+  revalidatePath(`/projects/${projectId}`);
+  revalidatePath(`/projects/${projectId}/settings`);
+  return { success: true };
+}
+
 export async function setProjectDesigners(
   projectId: string,
   designerIds: string[],

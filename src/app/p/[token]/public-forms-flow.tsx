@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { CheckCircle2, Send } from "lucide-react";
+import { CheckCircle2, History, Lock, Send } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -10,6 +10,7 @@ import {
 } from "./draft-progress";
 
 import { ImageDisplayField } from "@/components/form-builder/field-preview";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -42,6 +43,10 @@ import {
   type PublicSubmissionMatrixValueInput,
   type PublicSubmissionValueInput,
 } from "./actions";
+import type {
+  PreviousMatrixValuesMap,
+  PreviousValuesMap,
+} from "./forms/[templateId]/public-fill-wrapper";
 
 interface Props {
   token: string;
@@ -51,6 +56,9 @@ interface Props {
   identity: { client_name: string; client_email: string };
   onDone?: () => void;
   backHref?: string;
+  previousByField?: PreviousValuesMap;
+  previousByMatrix?: PreviousMatrixValuesMap;
+  allowResubmit?: boolean;
 }
 
 interface CheckboxGroupValue {
@@ -87,10 +95,11 @@ function parseCheckboxGroup(value: string | null): CheckboxGroupValue {
 }
 
 function serializeCheckboxGroup(v: CheckboxGroupValue): string | null {
-  if (v.selected.length === 0 && !v.other) return null;
+  const hasOther = v.other !== undefined;
+  if (v.selected.length === 0 && !hasOther) return null;
   return JSON.stringify({
     selected: v.selected,
-    ...(v.other ? { other: v.other } : {}),
+    ...(hasOther ? { other: v.other ?? "" } : {}),
   });
 }
 
@@ -149,6 +158,9 @@ export function PublicFormsFlow({
   identity,
   onDone,
   backHref,
+  previousByField,
+  previousByMatrix,
+  allowResubmit = false,
 }: Props) {
   const [step, setStep] = useState<Step>("form");
   const clientName = identity.client_name;
@@ -183,6 +195,9 @@ export function PublicFormsFlow({
       fields={fields}
       clientName={clientName}
       clientEmail={clientEmail}
+      previousByField={previousByField ?? {}}
+      previousByMatrix={previousByMatrix ?? {}}
+      allowResubmit={allowResubmit}
       onSuccess={() => {
         setStep("done");
         onDone?.();
@@ -198,6 +213,9 @@ function PublicSubmissionForm({
   fields,
   clientName,
   clientEmail,
+  previousByField,
+  previousByMatrix,
+  allowResubmit,
   onSuccess,
 }: {
   token: string;
@@ -206,6 +224,9 @@ function PublicSubmissionForm({
   fields: ClFormField[];
   clientName: string;
   clientEmail: string;
+  previousByField: PreviousValuesMap;
+  previousByMatrix: PreviousMatrixValuesMap;
+  allowResubmit: boolean;
   onSuccess: () => void;
 }) {
   const isMatrix = template.layout_mode === "matrix";
@@ -213,19 +234,31 @@ function PublicSubmissionForm({
 
   const envScope = isMatrix ? environments : [undefined as string | undefined];
 
+  function getPrevious(fieldId: string, env: string | undefined) {
+    if (env) {
+      return previousByMatrix[fieldId]?.[env];
+    }
+    return previousByField[fieldId];
+  }
+
   const initialValues = useMemo<Record<string, FieldValue>>(() => {
     const out: Record<string, FieldValue> = {};
     for (const f of fields) {
       if (isDisplayOnly(f.type)) continue;
       for (const env of envScope) {
-        out[makeFieldKey(f.id, env)] = {
-          value: f.type === "checkbox" ? "false" : null,
-        };
+        const prev = getPrevious(f.id, env);
+        if (prev && prev.value !== null) {
+          out[makeFieldKey(f.id, env)] = { value: prev.value };
+        } else {
+          out[makeFieldKey(f.id, env)] = {
+            value: f.type === "checkbox" ? "false" : null,
+          };
+        }
       }
     }
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fields, isMatrix]);
+  }, [fields, isMatrix, previousByField, previousByMatrix]);
 
   const [values, setValues] = useState<Record<string, FieldValue>>(
     initialValues,
@@ -247,6 +280,17 @@ function PublicSubmissionForm({
     }
     return Boolean(v?.value && v.value.trim() !== "");
   }
+
+  const hasAnyPrevious = useMemo(() => {
+    for (const f of fields) {
+      if (isDisplayOnly(f.type)) continue;
+      for (const env of envScope) {
+        if (getPrevious(f.id, env)) return true;
+      }
+    }
+    return false;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fields, isMatrix, previousByField, previousByMatrix]);
 
   const progress = useMemo(() => {
     let total = 0;
@@ -310,10 +354,12 @@ function PublicSubmissionForm({
 
         if (!visible) continue;
 
+        const prev = getPrevious(f.id, env);
+        const locked = Boolean(prev) && !allowResubmit;
         const payload = {
           field_id: f.id,
-          value: v?.value ?? null,
-          image_url: null,
+          value: locked ? prev?.value ?? null : v?.value ?? null,
+          image_url: locked ? prev?.image_url ?? null : null,
         };
 
         if (env) {
@@ -372,6 +418,28 @@ function PublicSubmissionForm({
         ) : null}
       </CardHeader>
       <CardContent className="space-y-8">
+        {hasAnyPrevious ? (
+          <div
+            className={
+              "flex items-start gap-2 rounded-md border p-3 text-xs " +
+              (allowResubmit
+                ? "border-amber-300 bg-amber-50 text-amber-800"
+                : "border-muted-foreground/20 bg-muted/40 text-muted-foreground")
+            }
+          >
+            {allowResubmit ? (
+              <History className="mt-0.5 h-4 w-4 shrink-0" />
+            ) : (
+              <Lock className="mt-0.5 h-4 w-4 shrink-0" />
+            )}
+            <p>
+              {allowResubmit
+                ? "Alguns campos já foram respondidos em preenchimentos anteriores e vêm pré-preenchidos. Você pode alterá-los se necessário."
+                : "Alguns campos já foram respondidos em preenchimentos anteriores e estão bloqueados. Para alterar, peça ao responsável para habilitar novo preenchimento nas configurações do projeto."}
+            </p>
+          </div>
+        ) : null}
+
         {fields.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             Este formulário não possui campos.
@@ -383,6 +451,8 @@ function PublicSubmissionForm({
             environments={environments}
             values={values}
             onChange={setFieldValue}
+            previousByMatrix={previousByMatrix}
+            allowResubmit={allowResubmit}
           />
         ) : (
           <StandardRenderer
@@ -390,6 +460,8 @@ function PublicSubmissionForm({
             fields={fields}
             values={values}
             onChange={setFieldValue}
+            previousByField={previousByField}
+            allowResubmit={allowResubmit}
           />
         )}
 
@@ -409,11 +481,15 @@ function StandardRenderer({
   fields,
   values,
   onChange,
+  previousByField,
+  allowResubmit,
 }: {
   sections: ClFormSection[];
   fields: ClFormField[];
   values: Record<string, FieldValue>;
   onChange: (key: string, patch: Partial<FieldValue>) => void;
+  previousByField: PreviousValuesMap;
+  allowResubmit: boolean;
 }) {
   const sectionList =
     sections.length > 0
@@ -462,6 +538,8 @@ function StandardRenderer({
                 const key = makeFieldKey(field.id);
                 const visible = evaluateVisible(field.visible_when, values);
                 if (!visible) return null;
+                const hasPrevious = Boolean(previousByField[field.id]);
+                const locked = hasPrevious && !allowResubmit;
                 return (
                   <div
                     key={field.id}
@@ -475,6 +553,8 @@ function StandardRenderer({
                     <FieldInput
                       field={field}
                       value={values[key]}
+                      hasPrevious={hasPrevious}
+                      locked={locked}
                       onChange={(patch) => onChange(key, patch)}
                     />
                   </div>
@@ -494,12 +574,16 @@ function MatrixRenderer({
   environments,
   values,
   onChange,
+  previousByMatrix,
+  allowResubmit,
 }: {
   sections: ClFormSection[];
   fields: ClFormField[];
   environments: string[];
   values: Record<string, FieldValue>;
   onChange: (key: string, patch: Partial<FieldValue>) => void;
+  previousByMatrix: PreviousMatrixValuesMap;
+  allowResubmit: boolean;
 }) {
   const rows = fields.filter((f) => !isDisplayOnly(f.type));
 
@@ -557,16 +641,25 @@ function MatrixRenderer({
                           values,
                           env,
                         );
+                        const hasPrevious = Boolean(
+                          previousByMatrix[field.id]?.[env],
+                        );
+                        const locked = hasPrevious && !allowResubmit;
                         return (
                           <td
                             key={env}
-                            className="border-l border-t p-2 align-top"
+                            className={
+                              "border-l border-t p-2 align-top" +
+                              (hasPrevious ? " bg-muted/30" : "")
+                            }
                           >
                             {visible ? (
                               <FieldInput
                                 field={field}
                                 value={values[key]}
                                 compact
+                                hasPrevious={hasPrevious}
+                                locked={locked}
                                 onChange={(patch) => onChange(key, patch)}
                               />
                             ) : (
@@ -622,11 +715,15 @@ function FieldInput({
   field,
   value,
   compact,
+  hasPrevious = false,
+  locked = false,
   onChange,
 }: {
   field: ClFormField;
   value: FieldValue | undefined;
   compact?: boolean;
+  hasPrevious?: boolean;
+  locked?: boolean;
   onChange: (patch: Partial<FieldValue>) => void;
 }) {
   const opts = (field.options as Exclude<FieldOptions, null>) ?? {};
@@ -654,18 +751,45 @@ function FieldInput({
       : null;
 
   function updateGroup(next: CheckboxGroupValue) {
+    if (locked) return;
     onChange({ value: serializeCheckboxGroup(next) });
   }
 
+  const previousBadge = hasPrevious ? (
+    <Badge
+      variant="outline"
+      className={
+        locked
+          ? "border-muted-foreground/30 text-muted-foreground"
+          : "border-amber-500 text-amber-600"
+      }
+    >
+      {locked ? (
+        <Lock className="mr-1 h-3 w-3" />
+      ) : (
+        <History className="mr-1 h-3 w-3" />
+      )}
+      {locked ? "Já respondido" : "Preenchido anteriormente"}
+    </Badge>
+  ) : null;
+
+  const containerClassName =
+    "space-y-1.5" + (locked ? " opacity-90" : "");
+
   return (
-    <div className="space-y-1.5">
+    <div className={containerClassName}>
       {showLabel ? (
-        <Label>
-          {field.label}
-          {field.required ? (
-            <span className="ml-1 text-destructive-foreground">*</span>
-          ) : null}
-        </Label>
+        <div className="flex flex-wrap items-center gap-2">
+          <Label>
+            {field.label}
+            {field.required ? (
+              <span className="ml-1 text-destructive-foreground">*</span>
+            ) : null}
+          </Label>
+          {previousBadge}
+        </div>
+      ) : previousBadge ? (
+        <div className="flex">{previousBadge}</div>
       ) : null}
       {showLabel && field.help_text ? (
         <p className="text-xs italic text-muted-foreground">
@@ -676,6 +800,8 @@ function FieldInput({
       {field.type === "text" ? (
         <Input
           value={value?.value ?? ""}
+          disabled={locked}
+          readOnly={locked}
           onChange={(e) => onChange({ value: e.target.value })}
         />
       ) : null}
@@ -684,6 +810,8 @@ function FieldInput({
         <Input
           type="number"
           value={value?.value ?? ""}
+          disabled={locked}
+          readOnly={locked}
           onChange={(e) => onChange({ value: e.target.value })}
         />
       ) : null}
@@ -692,6 +820,8 @@ function FieldInput({
         <Textarea
           rows={compact ? 2 : 3}
           value={value?.value ?? ""}
+          disabled={locked}
+          readOnly={locked}
           onChange={(e) => onChange({ value: e.target.value })}
         />
       ) : null}
@@ -700,6 +830,8 @@ function FieldInput({
         <Input
           type="date"
           value={value?.value ?? ""}
+          disabled={locked}
+          readOnly={locked}
           onChange={(e) => onChange({ value: e.target.value })}
         />
       ) : null}
@@ -708,6 +840,7 @@ function FieldInput({
         <div className="flex items-center gap-2 pt-1">
           <Checkbox
             checked={value?.value === "true"}
+            disabled={locked}
             onCheckedChange={(checked) =>
               onChange({ value: checked ? "true" : "false" })
             }
@@ -723,10 +856,14 @@ function FieldInput({
             return (
               <label
                 key={c.value}
-                className="flex cursor-pointer items-center gap-2 text-sm"
+                className={
+                  "flex items-center gap-2 text-sm " +
+                  (locked ? "cursor-not-allowed" : "cursor-pointer")
+                }
               >
                 <Checkbox
                   checked={checked}
+                  disabled={locked}
                   onCheckedChange={(v) => {
                     const nextSelected = v
                       ? [...groupValue.selected, c.value]
@@ -742,6 +879,7 @@ function FieldInput({
             <div className="flex items-center gap-2 text-sm">
               <Checkbox
                 checked={groupValue.other !== undefined}
+                disabled={locked}
                 onCheckedChange={(v) =>
                   updateGroup({
                     ...groupValue,
@@ -753,7 +891,8 @@ function FieldInput({
               <Input
                 className="h-8 flex-1"
                 value={groupValue.other ?? ""}
-                disabled={groupValue.other === undefined}
+                disabled={locked || groupValue.other === undefined}
+                readOnly={locked}
                 onChange={(e) =>
                   updateGroup({ ...groupValue, other: e.target.value })
                 }
@@ -766,6 +905,7 @@ function FieldInput({
       {field.type === "select" ? (
         <Select
           value={value?.value ?? ""}
+          disabled={locked}
           onValueChange={(v) => onChange({ value: v })}
         >
           <SelectTrigger>
@@ -786,12 +926,16 @@ function FieldInput({
           {choices.map((c) => (
             <label
               key={c.value}
-              className="flex cursor-pointer items-center gap-2 text-sm"
+              className={
+                "flex items-center gap-2 text-sm " +
+                (locked ? "cursor-not-allowed" : "cursor-pointer")
+              }
             >
               <input
                 type="radio"
                 name={field.id}
                 checked={value?.value === c.value}
+                disabled={locked}
                 onChange={() => onChange({ value: c.value })}
               />
               {c.label}

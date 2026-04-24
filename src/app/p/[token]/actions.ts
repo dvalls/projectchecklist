@@ -4,13 +4,20 @@ import { revalidatePath } from "next/cache";
 
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import type {
+  ClDesigner,
+  ClDiscipline,
   ClFormField,
   ClFormSection,
   ClFormSubmission,
   ClFormTemplate,
+  ClOfficeSettings,
+  ClProject,
+  ClProjectDesigner,
   ClSubmissionValue,
   ClSubmissionValueMatrix,
 } from "@/lib/supabase/types";
+
+const BUCKET = "checklist-images";
 
 export interface PublicSubmissionValueInput {
   field_id: string;
@@ -269,6 +276,278 @@ export async function getPublicSubmissionSummary(
       fields: (fields ?? []) as ClFormField[],
       values: (values ?? []) as ClSubmissionValue[],
       matrixValues: (matrixValues ?? []) as ClSubmissionValueMatrix[],
+    },
+  };
+}
+
+export type ReportOfficeSettings = Pick<
+  ClOfficeSettings,
+  "office_name" | "logo_url" | "website"
+>;
+
+export interface ReportDesigner {
+  id: string;
+  name: string;
+  role: string | null;
+  photo_url: string | null;
+}
+
+export interface ReportTemplateEntry {
+  template: Pick<
+    ClFormTemplate,
+    "id" | "name" | "description" | "layout_mode" | "environments"
+  >;
+  sections: ClFormSection[];
+  fields: ClFormField[];
+  submissions: Array<{
+    submission: Pick<
+      ClFormSubmission,
+      | "id"
+      | "client_name"
+      | "client_email"
+      | "submitted_at"
+      | "created_at"
+      | "status"
+    >;
+    values: ClSubmissionValue[];
+    matrixValues: ClSubmissionValueMatrix[];
+  }>;
+}
+
+export interface PublicFullReport {
+  project: Pick<ClProject, "id" | "name" | "description" | "image_url">;
+  office: ReportOfficeSettings | null;
+  designers: ReportDesigner[];
+  disciplines: ClDiscipline[];
+  templates: ReportTemplateEntry[];
+  publicBaseUrl: string;
+  generatedAt: string;
+}
+
+export async function getPublicFullReport(
+  token: string,
+): Promise<
+  { data: PublicFullReport; error?: never } | { data?: never; error: string }
+> {
+  const supabase = createServiceRoleClient();
+
+  const { data: link } = await supabase
+    .from("cl_public_links")
+    .select("id, project_id, is_active")
+    .eq("token", token)
+    .maybeSingle();
+
+  const typedLink = link as
+    | { id: string; project_id: string; is_active: boolean }
+    | null;
+  if (!typedLink) return { error: "Link inválido." };
+  if (!typedLink.is_active) return { error: "Link desativado." };
+
+  const { data: project } = await supabase
+    .from("cl_projects")
+    .select("id, name, description, image_url, created_by")
+    .eq("id", typedLink.project_id)
+    .maybeSingle();
+
+  const typedProject = project as
+    | (Pick<ClProject, "id" | "name" | "description" | "image_url"> & {
+        created_by: string;
+      })
+    | null;
+  if (!typedProject) return { error: "Projeto não encontrado." };
+
+  const [
+    { data: templates },
+    { data: submissions },
+    { data: disciplines },
+    { data: projectDesigners },
+    { data: officeSettingsData },
+  ] = await Promise.all([
+    supabase
+      .from("cl_form_templates")
+      .select("id, name, description, layout_mode, environments, discipline_id")
+      .eq("project_id", typedLink.project_id)
+      .eq("is_public", true)
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("cl_form_submissions")
+      .select(
+        "id, template_id, client_name, client_email, submitted_at, created_at, status",
+      )
+      .eq("public_link_id", typedLink.id)
+      .eq("status", "submitted")
+      .order("submitted_at", { ascending: true }),
+    supabase.from("cl_disciplines").select("*").order("position"),
+    supabase
+      .from("cl_project_designers")
+      .select("*")
+      .eq("project_id", typedLink.project_id)
+      .order("position"),
+    supabase
+      .from("cl_office_settings")
+      .select("office_name, logo_url, website")
+      .eq("user_id", typedProject.created_by)
+      .maybeSingle(),
+  ]);
+
+  const typedTemplates = (templates ?? []) as Array<
+    Pick<
+      ClFormTemplate,
+      "id" | "name" | "description" | "layout_mode" | "environments"
+    > & { discipline_id: string | null }
+  >;
+
+  const typedSubmissions = (submissions ?? []) as Array<
+    Pick<
+      ClFormSubmission,
+      | "id"
+      | "template_id"
+      | "client_name"
+      | "client_email"
+      | "submitted_at"
+      | "created_at"
+      | "status"
+    >
+  >;
+
+  const templateIds = typedTemplates.map((t) => t.id);
+  const submissionIds = typedSubmissions.map((s) => s.id);
+
+  const [{ data: sections }, { data: fields }, { data: values }, { data: matrixValues }] =
+    await Promise.all([
+      templateIds.length
+        ? supabase
+            .from("cl_form_sections")
+            .select("*")
+            .in("template_id", templateIds)
+            .order("position")
+        : Promise.resolve({ data: [] as ClFormSection[] }),
+      templateIds.length
+        ? supabase
+            .from("cl_form_fields")
+            .select("*")
+            .in("template_id", templateIds)
+            .order("position")
+        : Promise.resolve({ data: [] as ClFormField[] }),
+      submissionIds.length
+        ? supabase
+            .from("cl_submission_values")
+            .select("*")
+            .in("submission_id", submissionIds)
+        : Promise.resolve({ data: [] as ClSubmissionValue[] }),
+      submissionIds.length
+        ? supabase
+            .from("cl_submission_values_matrix")
+            .select("*")
+            .in("submission_id", submissionIds)
+        : Promise.resolve({ data: [] as ClSubmissionValueMatrix[] }),
+    ]);
+
+  const typedSections = (sections ?? []) as ClFormSection[];
+  const typedFields = (fields ?? []) as ClFormField[];
+  const typedValues = (values ?? []) as ClSubmissionValue[];
+  const typedMatrix = (matrixValues ?? []) as ClSubmissionValueMatrix[];
+
+  const sectionsByTemplate = new Map<string, ClFormSection[]>();
+  for (const s of typedSections) {
+    const arr = sectionsByTemplate.get(s.template_id) ?? [];
+    arr.push(s);
+    sectionsByTemplate.set(s.template_id, arr);
+  }
+
+  const fieldsByTemplate = new Map<string, ClFormField[]>();
+  for (const f of typedFields) {
+    const arr = fieldsByTemplate.get(f.template_id) ?? [];
+    arr.push(f);
+    fieldsByTemplate.set(f.template_id, arr);
+  }
+
+  const valuesBySubmission = new Map<string, ClSubmissionValue[]>();
+  for (const v of typedValues) {
+    const arr = valuesBySubmission.get(v.submission_id) ?? [];
+    arr.push(v);
+    valuesBySubmission.set(v.submission_id, arr);
+  }
+
+  const matrixBySubmission = new Map<string, ClSubmissionValueMatrix[]>();
+  for (const v of typedMatrix) {
+    const arr = matrixBySubmission.get(v.submission_id) ?? [];
+    arr.push(v);
+    matrixBySubmission.set(v.submission_id, arr);
+  }
+
+  const submissionsByTemplate = new Map<
+    string,
+    Array<(typeof typedSubmissions)[number]>
+  >();
+  for (const s of typedSubmissions) {
+    const arr = submissionsByTemplate.get(s.template_id) ?? [];
+    arr.push(s);
+    submissionsByTemplate.set(s.template_id, arr);
+  }
+
+  const disciplinesInUse = new Set(
+    typedTemplates.map((t) => t.discipline_id).filter(Boolean) as string[],
+  );
+  const relevantDisciplines = ((disciplines ?? []) as ClDiscipline[]).filter(
+    (d) => disciplinesInUse.has(d.id),
+  );
+
+  const typedProjectDesigners = (projectDesigners ?? []) as ClProjectDesigner[];
+  let designers: ReportDesigner[] = [];
+  if (typedProjectDesigners.length > 0) {
+    const designerIds = typedProjectDesigners.map((d) => d.designer_id);
+    const { data: designersData } = await supabase
+      .from("cl_designers")
+      .select("id, name, role, photo_url")
+      .in("id", designerIds);
+    const byId = new Map(
+      ((designersData ?? []) as ReportDesigner[]).map((d) => [d.id, d]),
+    );
+    designers = typedProjectDesigners
+      .map((pd) => byId.get(pd.designer_id))
+      .filter((d): d is ReportDesigner => Boolean(d));
+  }
+
+  const templatesReport: ReportTemplateEntry[] = typedTemplates
+    .map((t) => {
+      const subs = (submissionsByTemplate.get(t.id) ?? []).map((s) => ({
+        submission: s,
+        values: valuesBySubmission.get(s.id) ?? [],
+        matrixValues: matrixBySubmission.get(s.id) ?? [],
+      }));
+      return {
+        template: {
+          id: t.id,
+          name: t.name,
+          description: t.description,
+          layout_mode: t.layout_mode,
+          environments: t.environments,
+        },
+        sections: sectionsByTemplate.get(t.id) ?? [],
+        fields: fieldsByTemplate.get(t.id) ?? [],
+        submissions: subs,
+      };
+    })
+    .filter((entry) => entry.submissions.length > 0);
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+  const publicBaseUrl = `${supabaseUrl}/storage/v1/object/public/${BUCKET}`;
+
+  return {
+    data: {
+      project: {
+        id: typedProject.id,
+        name: typedProject.name,
+        description: typedProject.description,
+        image_url: typedProject.image_url,
+      },
+      office: (officeSettingsData ?? null) as ReportOfficeSettings | null,
+      designers,
+      disciplines: relevantDisciplines,
+      templates: templatesReport,
+      publicBaseUrl,
+      generatedAt: new Date().toISOString(),
     },
   };
 }

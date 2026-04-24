@@ -54,3 +54,47 @@ export async function deleteProject(projectId: string) {
   revalidatePath("/projects");
   return { success: true };
 }
+
+export async function renameProject(projectId: string, name: string) {
+  const trimmed = name.trim();
+  if (!trimmed) return { error: "Nome é obrigatório." };
+
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("cl_projects")
+    .update({ name: trimmed })
+    .eq("id", projectId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/projects");
+  return { success: true };
+}
+
+export async function duplicateProject(projectId: string) {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { error: "Não autenticado." };
+
+  const { data: project, error: fetchError } = await supabase
+    .from("cl_projects")
+    .select("*")
+    .eq("id", projectId)
+    .single();
+
+  if (fetchError || !project) return { error: "Projeto não encontrado." };
+
+  const { error } = await supabase.from("cl_projects").insert({
+    name: `Cópia de ${project.name}`,
+    description: project.description ?? null,
+    created_by: user.id,
+  });
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/projects");
+  return { success: true };
+}

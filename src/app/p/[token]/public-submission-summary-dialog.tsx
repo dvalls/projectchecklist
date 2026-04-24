@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FileText, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -10,66 +10,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type {
-  ClFormField,
-  ClFormSection,
-  FieldOptions,
-} from "@/lib/supabase/types";
+import type { ClFormSection } from "@/lib/supabase/types";
 
 import {
   getPublicSubmissionSummary,
   type PublicSubmissionSummary,
 } from "./actions";
+import { DownloadSubmissionPdfButton } from "./pdf/download-buttons";
+import { formatDateTime, formatFieldValue } from "./pdf/format-value";
 
 interface Props {
   token: string;
   submissionId: string;
   clientName: string | null;
   templateName: string;
-}
-
-function formatDate(iso: string | null) {
-  if (!iso) return "—";
-  try {
-    return new Date(iso).toLocaleString("pt-BR", {
-      dateStyle: "short",
-      timeStyle: "short",
-    });
-  } catch {
-    return iso;
-  }
-}
-
-function renderValue(field: ClFormField, raw: string | null): string {
-  if (raw === null || raw === undefined || raw === "") return "—";
-  const opts = (field.options as Exclude<FieldOptions, null>) ?? {};
-  const choices = opts.choices ?? [];
-
-  if (field.type === "checkbox") {
-    return raw === "true" ? "Sim" : "Não";
-  }
-
-  if (field.type === "checkbox_group") {
-    try {
-      const parsed = JSON.parse(raw);
-      const selectedLabels = (parsed.selected ?? []).map((v: string) => {
-        const choice = choices.find((c) => c.value === v);
-        return choice?.label ?? v;
-      });
-      const parts = [...selectedLabels];
-      if (parsed.other) parts.push(`Outra: ${parsed.other}`);
-      return parts.length > 0 ? parts.join(", ") : "—";
-    } catch {
-      return raw;
-    }
-  }
-
-  if (field.type === "select" || field.type === "radio") {
-    const choice = choices.find((c) => c.value === raw);
-    return choice?.label ?? raw;
-  }
-
-  return raw;
+  projectName?: string;
 }
 
 export function PublicSubmissionSummaryDialog({
@@ -77,22 +32,23 @@ export function PublicSubmissionSummaryDialog({
   submissionId,
   clientName,
   templateName,
+  projectName,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<PublicSubmissionSummary | null>(null);
+  const fetchingRef = useRef(false);
 
   useEffect(() => {
-    if (!open || summary || loading) return;
+    if (!open || summary || fetchingRef.current) return;
 
-    let cancelled = false;
+    fetchingRef.current = true;
     setLoading(true);
     setError(null);
 
     getPublicSubmissionSummary(token, submissionId)
       .then((res) => {
-        if (cancelled) return;
         if ("error" in res && res.error) {
           setError(res.error);
           return;
@@ -102,17 +58,13 @@ export function PublicSubmissionSummaryDialog({
         }
       })
       .catch((err) => {
-        if (cancelled) return;
         setError(err instanceof Error ? err.message : "Erro ao carregar.");
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        fetchingRef.current = false;
+        setLoading(false);
       });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [open, summary, loading, token, submissionId]);
+  }, [open, summary, token, submissionId]);
 
   return (
     <>
@@ -128,8 +80,17 @@ export function PublicSubmissionSummaryDialog({
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[85vh] max-w-2xl overflow-hidden">
-          <DialogHeader>
+          <DialogHeader className="flex flex-row items-center justify-between gap-3 pr-8">
             <DialogTitle>Resumo das respostas</DialogTitle>
+            {summary ? (
+              <DownloadSubmissionPdfButton
+                token={token}
+                submissionId={submissionId}
+                clientName={clientName}
+                templateName={templateName}
+                projectName={projectName}
+              />
+            ) : null}
           </DialogHeader>
 
           <div className="-mx-6 max-h-[70vh] overflow-y-auto px-6 pb-2">
@@ -198,7 +159,7 @@ function SummaryContent({
           {submission.client_email ? ` · ${submission.client_email}` : ""}
         </div>
         <div className="mt-0.5 text-muted-foreground">
-          Enviado em {formatDate(submission.submitted_at ?? submission.created_at)}
+          Enviado em {formatDateTime(submission.submitted_at ?? submission.created_at)}
         </div>
       </div>
 
@@ -239,7 +200,7 @@ function SummaryContent({
                                 {env}
                               </dt>
                               <dd>
-                                {renderValue(field, v?.value ?? null)}
+                                {formatFieldValue(field, v?.value ?? null)}
                                 {v?.image_url ? (
                                   <span className="ml-2 text-muted-foreground">
                                     [imagem]
@@ -264,7 +225,7 @@ function SummaryContent({
                       {field.label}
                     </dt>
                     <dd>
-                      {renderValue(field, v?.value ?? null)}
+                      {formatFieldValue(field, v?.value ?? null)}
                       {v?.image_url ? (
                         <span className="ml-2 text-xs text-muted-foreground">
                           [imagem anexada]

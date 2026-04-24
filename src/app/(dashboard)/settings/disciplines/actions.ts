@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 export interface DisciplineInput {
   name: string;
   color: string;
+  icon?: string | null;
 }
 
 export async function createDiscipline(input: DisciplineInput) {
@@ -23,6 +24,7 @@ export async function createDiscipline(input: DisciplineInput) {
   const { error } = await supabase.from("cl_disciplines").insert({
     name,
     color,
+    icon: input.icon ?? null,
     position: count ?? 0,
   });
 
@@ -45,7 +47,7 @@ export async function updateDiscipline(id: string, input: DisciplineInput) {
   const supabase = createClient();
   const { error } = await supabase
     .from("cl_disciplines")
-    .update({ name, color })
+    .update({ name, color, icon: input.icon ?? null })
     .eq("id", id);
 
   if (error) {

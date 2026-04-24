@@ -81,6 +81,11 @@ export function DesignersManager({ initialDesigners, publicBaseUrl }: Props) {
                         {d.role}
                       </div>
                     ) : null}
+                    {d.formation ? (
+                      <div className="truncate text-xs text-muted-foreground/70 italic">
+                        {d.formation}
+                      </div>
+                    ) : null}
                   </div>
                   <div className="flex flex-col gap-1">
                     <Button
@@ -154,6 +159,7 @@ function DesignerDialog({
 }) {
   const [name, setName] = useState(designer?.name ?? "");
   const [role, setRole] = useState(designer?.role ?? "");
+  const [formation, setFormation] = useState(designer?.formation ?? "");
   const [photoUrl, setPhotoUrl] = useState<string | null>(
     designer?.photo_url ?? null,
   );
@@ -192,6 +198,7 @@ function DesignerDialog({
       const input = {
         name,
         role: role || null,
+        formation: formation || null,
         photo_url: photoUrl,
       };
       const res = designer
@@ -281,6 +288,16 @@ function DesignerDialog({
               value={role}
               onChange={(e) => setRole(e.target.value)}
               placeholder="Ex: Engenheiro Eletricista"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="designer-formation">Formação (opcional)</Label>
+            <Input
+              id="designer-formation"
+              value={formation}
+              onChange={(e) => setFormation(e.target.value)}
+              placeholder="Ex: Engenheiro Civil"
             />
           </div>
         </div>

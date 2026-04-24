@@ -12,13 +12,30 @@ import type {
 } from "@/lib/supabase/types";
 
 import { readIdentity, type PublicIdentity } from "../../identity-storage";
+import { PublicFooter, type PublicOfficeSettings } from "../../public-footer";
 import { PublicFormsFlow } from "../../public-forms-flow";
+
+export interface PreviousFieldValue {
+  value: string | null;
+  image_url: string | null;
+  submission_id: string;
+}
+
+export type PreviousValuesMap = Record<string, PreviousFieldValue>;
+export type PreviousMatrixValuesMap = Record<
+  string,
+  Record<string, PreviousFieldValue>
+>;
 
 interface Props {
   token: string;
   template: ClFormTemplate;
   sections: ClFormSection[];
   fields: ClFormField[];
+  officeSettings: PublicOfficeSettings | null;
+  previousByField: PreviousValuesMap;
+  previousByMatrix: PreviousMatrixValuesMap;
+  allowResubmit: boolean;
 }
 
 export function PublicFillWrapper({
@@ -26,6 +43,10 @@ export function PublicFillWrapper({
   template,
   sections,
   fields,
+  officeSettings,
+  previousByField,
+  previousByMatrix,
+  allowResubmit,
 }: Props) {
   const router = useRouter();
   const [identity, setIdentity] = useState<PublicIdentity | null>(null);
@@ -52,7 +73,7 @@ export function PublicFillWrapper({
   const backHref = `/p/${token}/forms`;
 
   return (
-    <div className="min-h-screen bg-muted/30">
+    <div className="flex min-h-screen flex-col bg-muted/30">
       <div className="border-b bg-background">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
           <Link
@@ -71,7 +92,7 @@ export function PublicFillWrapper({
         </div>
       </div>
 
-      <div className="mx-auto max-w-5xl px-4 py-8">
+      <div className="mx-auto max-w-5xl flex-1 px-4 py-8">
         <PublicFormsFlow
           token={token}
           template={template}
@@ -79,8 +100,13 @@ export function PublicFillWrapper({
           fields={fields}
           identity={identity}
           backHref={backHref}
+          previousByField={previousByField}
+          previousByMatrix={previousByMatrix}
+          allowResubmit={allowResubmit}
         />
       </div>
+
+      <PublicFooter officeSettings={officeSettings} />
     </div>
   );
 }

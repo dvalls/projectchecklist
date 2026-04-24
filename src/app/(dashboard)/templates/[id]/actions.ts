@@ -4,6 +4,9 @@ import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
 import type {
+  ClFormField,
+  ClFormSection,
+  ClFormTemplate,
   ColumnSpan,
   FieldOptions,
   FieldType,
@@ -265,6 +268,20 @@ export async function saveTemplate(
   return { success: true };
 }
 
+export async function renameTemplate(templateId: string, newName: string) {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("cl_form_templates")
+    .update({ name: newName })
+    .eq("id", templateId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath(`/templates/${templateId}`);
+  revalidatePath(`/templates`);
+  return { success: true };
+}
+
 export async function deleteTemplate(templateId: string, projectId: string) {
   const supabase = createClient();
   const { error } = await supabase
@@ -277,5 +294,131 @@ export async function deleteTemplate(templateId: string, projectId: string) {
   revalidatePath(`/projects/${projectId}`);
   revalidatePath(`/templates`);
   return { success: true };
+}
+
+export async function duplicateTemplate(templateId: string) {
+  const supabase = createClient();
+
+  const { data: source, error: srcErr } = await supabase
+    .from("cl_form_templates")
+    .select("*")
+    .eq("id", templateId)
+    .maybeSingle();
+  if (srcErr || !source) {
+    return { error: srcErr?.message ?? "Formulário não encontrado." };
+  }
+  const typedSource = source as ClFormTemplate;
+
+  const { data: existing } = await supabase
+    .from("cl_form_templates")
+    .select("name")
+    .eq("project_id", typedSource.project_id);
+  const existingNames = new Set(
+    ((existing ?? []) as { name: string }[]).map((e) => e.name),
+  );
+  let newName = `${typedSource.name} (cópia)`;
+  if (existingNames.has(newName)) {
+    let suffix = 2;
+    while (existingNames.has(`${typedSource.name} (cópia ${suffix})`)) suffix++;
+    newName = `${typedSource.name} (cópia ${suffix})`;
+  }
+
+  const { data: newTpl, error: tplErr } = await supabase
+    .from("cl_form_templates")
+    .insert({
+      project_id: typedSource.project_id,
+      discipline_id: typedSource.discipline_id,
+      name: newName,
+      description: typedSource.description,
+      layout_mode: typedSource.layout_mode,
+      environments: typedSource.environments,
+      is_public: false,
+    })
+    .select("id")
+    .single();
+  if (tplErr || !newTpl) {
+    return { error: tplErr?.message ?? "Erro ao duplicar formulário." };
+  }
+  const newTemplateId = (newTpl as { id: string }).id;
+
+  const { data: sections, error: secErr } = await supabase
+    .from("cl_form_sections")
+    .select("*")
+    .eq("template_id", templateId)
+    .order("position", { ascending: true });
+  if (secErr) return { error: secErr.message };
+
+  const sectionIdMap = new Map<string, string>();
+  for (const s of (sections ?? []) as ClFormSection[]) {
+    const { data: newSec, error: insErr } = await supabase
+      .from("cl_form_sections")
+      .insert({
+        template_id: newTemplateId,
+        title: s.title,
+        subtitle: s.subtitle,
+        columns: s.columns,
+        position: s.position,
+      })
+      .select("id")
+      .single();
+    if (insErr || !newSec) {
+      return { error: insErr?.message ?? "Erro ao copiar seção." };
+    }
+    sectionIdMap.set(s.id, (newSec as { id: string }).id);
+  }
+
+  const { data: fields, error: fieldsErr } = await supabase
+    .from("cl_form_fields")
+    .select("*")
+    .eq("template_id", templateId)
+    .order("position", { ascending: true });
+  if (fieldsErr) return { error: fieldsErr.message };
+
+  const fieldIdMap = new Map<string, string>();
+  for (const f of (fields ?? []) as ClFormField[]) {
+    const mappedSectionId = f.section_id
+      ? sectionIdMap.get(f.section_id) ?? null
+      : null;
+    const { data: newField, error: fErr } = await supabase
+      .from("cl_form_fields")
+      .insert({
+        template_id: newTemplateId,
+        section_id: mappedSectionId,
+        group_key: f.group_key,
+        label: f.label,
+        help_text: f.help_text,
+        type: f.type,
+        required: f.required,
+        column_span: f.column_span,
+        position: f.position,
+        options: f.options,
+      })
+      .select("id")
+      .single();
+    if (fErr || !newField) {
+      return { error: fErr?.message ?? "Erro ao copiar campo." };
+    }
+    fieldIdMap.set(f.id, (newField as { id: string }).id);
+  }
+
+  for (const f of (fields ?? []) as ClFormField[]) {
+    if (!f.visible_when) continue;
+    const newFieldId = fieldIdMap.get(f.id);
+    const newTriggerId = fieldIdMap.get(f.visible_when.field_id);
+    if (!newFieldId || !newTriggerId) continue;
+    const updatedVisible: VisibleWhen = {
+      field_id: newTriggerId,
+      op: f.visible_when.op,
+      value: f.visible_when.value,
+    };
+    await supabase
+      .from("cl_form_fields")
+      .update({ visible_when: updatedVisible })
+      .eq("id", newFieldId);
+  }
+
+  revalidatePath(`/projects/${typedSource.project_id}`);
+  revalidatePath(`/templates`);
+  return { success: true, templateId: newTemplateId };
 }
 

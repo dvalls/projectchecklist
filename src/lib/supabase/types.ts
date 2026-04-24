@@ -49,6 +49,7 @@ export interface ClProject {
   name: string;
   description: string | null;
   image_url: string | null;
+  allow_resubmit_answers: boolean;
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -58,6 +59,7 @@ export interface ClDiscipline {
   id: string;
   name: string;
   color: string;
+  icon: string | null;
   position: number;
   created_at: string;
 }
@@ -129,6 +131,7 @@ export interface ClDesigner {
   id: string;
   name: string;
   role: string | null;
+  formation: string | null;
   photo_url: string | null;
   created_by: string;
   created_at: string;
@@ -139,6 +142,21 @@ export interface ClProjectDesigner {
   designer_id: string;
   position: number;
   created_at: string;
+}
+
+export interface ClOfficeSettings {
+  id: string;
+  user_id: string;
+  office_name: string | null;
+  logo_url: string | null;
+  website: string | null;
+  instagram: string | null;
+  facebook: string | null;
+  linkedin: string | null;
+  twitter: string | null;
+  whatsapp: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface ClSubmissionValue {
@@ -229,6 +247,12 @@ export type Database = {
           "project_id" | "designer_id"
         >;
         Update: Partial<ClProjectDesigner>;
+        Relationships: Relationships;
+      };
+      cl_office_settings: {
+        Row: ClOfficeSettings;
+        Insert: WithDefaults<ClOfficeSettings, "user_id">;
+        Update: Partial<ClOfficeSettings>;
         Relationships: Relationships;
       };
       cl_submission_values: {

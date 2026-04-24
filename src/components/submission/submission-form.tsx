@@ -77,10 +77,11 @@ function parseCheckboxGroup(value: string | null): CheckboxGroupValue {
 }
 
 function serializeCheckboxGroup(v: CheckboxGroupValue): string | null {
-  if (v.selected.length === 0 && !v.other) return null;
+  const hasOther = v.other !== undefined;
+  if (v.selected.length === 0 && !hasOther) return null;
   return JSON.stringify({
     selected: v.selected,
-    ...(v.other ? { other: v.other } : {}),
+    ...(hasOther ? { other: v.other ?? "" } : {}),
   });
 }
 

@@ -86,10 +86,15 @@ const config: Config = {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
+        "glow-pulse": {
+          "0%, 100%": { boxShadow: "0 0 4px 1px hsl(var(--primary) / 0.25)" },
+          "50%": { boxShadow: "0 0 10px 3px hsl(var(--primary) / 0.45)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "glow-pulse": "glow-pulse 10s ease-in-out infinite",
       },
     },
   },

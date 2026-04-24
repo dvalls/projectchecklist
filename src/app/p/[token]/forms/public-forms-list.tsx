@@ -3,7 +3,14 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, CheckCircle2, ChevronRight, LogOut } from "lucide-react";
+import {
+  ArrowLeft,
+  CheckCircle2,
+  ChevronRight,
+  History,
+  Lock,
+  LogOut,
+} from "lucide-react";
 
 import { getDisciplineIcon } from "@/lib/disciplines/icon";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +26,7 @@ import type {
 
 import { clearIdentity, readIdentity } from "../identity-storage";
 import { readDraftProgress } from "../draft-progress";
+import { PublicFooter, type PublicOfficeSettings } from "../public-footer";
 
 interface Props {
   token: string;
@@ -30,6 +38,9 @@ interface Props {
     "id" | "template_id" | "client_email" | "status"
   >[];
   requiredCountByTemplate: Record<string, number>;
+  hasPreviousByTemplate: Record<string, boolean>;
+  allowResubmit: boolean;
+  officeSettings: PublicOfficeSettings | null;
 }
 
 export function PublicFormsList({
@@ -39,6 +50,9 @@ export function PublicFormsList({
   templates,
   submissions,
   requiredCountByTemplate,
+  hasPreviousByTemplate,
+  allowResubmit,
+  officeSettings,
 }: Props) {
   const router = useRouter();
   const [identity, setIdentity] = useState<{
@@ -151,7 +165,7 @@ export function PublicFormsList({
   }
 
   return (
-    <div className="min-h-screen bg-muted/30">
+    <div className="flex min-h-screen flex-col bg-muted/30">
       <div className="border-b bg-background">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-4">
           <Link
@@ -176,7 +190,7 @@ export function PublicFormsList({
         </div>
       </div>
 
-      <div className="mx-auto max-w-5xl space-y-6 px-4 py-8">
+      <div className="mx-auto max-w-5xl flex-1 space-y-6 px-4 py-8">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">
             {project.name}
@@ -221,7 +235,7 @@ export function PublicFormsList({
                     {discipline?.name ?? "Sem disciplina"}
                   </h2>
                 </div>
-                <div className="grid gap-2 sm:grid-cols-2">
+                <div className="grid gap-2 sm:grid-cols-[repeat(auto-fit,minmax(min(100%,27rem),27rem))]">
                   {groupTemplates.map((t) => {
                     const completed = completedByTemplate.has(t.id);
                     const progress = progressByTemplate.get(t.id) ?? {
@@ -231,6 +245,9 @@ export function PublicFormsList({
                     const hasRequired = progress.total > 0;
                     const isComplete =
                       completed || (hasRequired && progress.done >= progress.total);
+                    const hasPrevious = Boolean(
+                      hasPreviousByTemplate[t.id],
+                    );
                     return (
                       <Link
                         key={t.id}
@@ -259,21 +276,42 @@ export function PublicFormsList({
                                   {t.description}
                                 </p>
                               ) : null}
-                              {hasRequired ? (
-                                <div className="mt-2 flex items-center gap-2">
-                                  <Badge
-                                    variant="outline"
-                                    className={
-                                      isComplete
-                                        ? "border-emerald-500 text-emerald-600"
-                                        : progress.done > 0
-                                        ? "border-amber-500 text-amber-600"
-                                        : "text-muted-foreground"
-                                    }
-                                  >
-                                    {progress.done}/{progress.total}{" "}
-                                    obrigatórios
-                                  </Badge>
+                              {hasRequired || hasPrevious ? (
+                                <div className="mt-2 flex flex-wrap items-center gap-2">
+                                  {hasRequired ? (
+                                    <Badge
+                                      variant="outline"
+                                      className={
+                                        isComplete
+                                          ? "border-emerald-500 text-emerald-600"
+                                          : progress.done > 0
+                                          ? "border-amber-500 text-amber-600"
+                                          : "text-muted-foreground"
+                                      }
+                                    >
+                                      {progress.done}/{progress.total}{" "}
+                                      obrigatórios
+                                    </Badge>
+                                  ) : null}
+                                  {hasPrevious && !completed ? (
+                                    allowResubmit ? (
+                                      <Badge
+                                        variant="outline"
+                                        className="border-amber-500 text-amber-600"
+                                      >
+                                        <History className="mr-1 h-3 w-3" />
+                                        Histórico disponível
+                                      </Badge>
+                                    ) : (
+                                      <Badge
+                                        variant="outline"
+                                        className="border-muted-foreground/30 text-muted-foreground"
+                                      >
+                                        <Lock className="mr-1 h-3 w-3" />
+                                        Herda respostas anteriores
+                                      </Badge>
+                                    )
+                                  ) : null}
                                 </div>
                               ) : null}
                             </div>
@@ -290,6 +328,8 @@ export function PublicFormsList({
           </div>
         )}
       </div>
+
+      <PublicFooter officeSettings={officeSettings} />
     </div>
   );
 }

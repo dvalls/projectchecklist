@@ -6,26 +6,29 @@ import {
   FileText,
   Plus,
   Settings,
+  User,
 } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
 import type {
+  ClDesigner,
   ClDiscipline,
   ClFormTemplate,
+  ClProjectDesigner,
   ClPublicLink,
 } from "@/lib/supabase/types";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-
 import { NewTemplateDialog } from "./templates/new-template-dialog";
 import {
   ImportExistingTemplateDialog,
   type ImportableTemplate,
 } from "./templates/import-existing-dialog";
 import { ProjectPublicLinkDialog } from "./project-public-link-dialog";
+
+const BUCKET = "checklist-images";
 
 export const dynamic = "force-dynamic";
 
@@ -49,6 +52,8 @@ export default async function ProjectDetailPage({
     { data: templates },
     { data: otherTemplates },
     { data: links },
+    { data: allDesigners },
+    { data: projectDesigners },
   ] = await Promise.all([
     supabase.from("cl_disciplines").select("*").order("name"),
     supabase
@@ -69,12 +74,29 @@ export default async function ProjectDetailPage({
       .eq("project_id", params.id)
       .is("template_id", null)
       .order("created_at", { ascending: false }),
+    supabase.from("cl_designers").select("*").order("name"),
+    supabase
+      .from("cl_project_designers")
+      .select("*")
+      .eq("project_id", params.id)
+      .order("position"),
   ]);
 
   const typedTemplates = (templates ?? []) as (ClFormTemplate & {
     cl_disciplines?: { name: string; color: string } | null;
   })[];
   const typedDisciplines = (disciplines ?? []) as ClDiscipline[];
+
+  const byDesignerId = new Map(
+    ((allDesigners ?? []) as ClDesigner[]).map((d) => [d.id, d]),
+  );
+  const orderedDesigners = ((projectDesigners ?? []) as ClProjectDesigner[])
+    .sort((a, b) => a.position - b.position)
+    .map((pd) => byDesignerId.get(pd.designer_id))
+    .filter(Boolean) as ClDesigner[];
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+  const publicBaseUrl = `${supabaseUrl}/storage/v1/object/public/${BUCKET}`;
 
   const importableTemplates: ImportableTemplate[] = (
     (otherTemplates ?? []) as unknown as {
@@ -129,8 +151,6 @@ export default async function ProjectDetailPage({
           </Button>
         </div>
       </div>
-
-      <Separator />
 
       <section>
         <div className="mb-4 flex items-center justify-between">
@@ -206,6 +226,56 @@ export default async function ProjectDetailPage({
           </p>
         )}
       </section>
+
+      {orderedDesigners.length > 0 ? (
+        <section>
+          <div className="mb-3 flex items-center gap-2">
+            <User className="h-5 w-5 text-muted-foreground" />
+            <h2 className="text-lg font-semibold">Projetistas</h2>
+          </div>
+          <div className="flex flex-wrap gap-4">
+            {orderedDesigners.map((d) => {
+              const photo = d.photo_url
+                ? `${publicBaseUrl}/${d.photo_url}`
+                : null;
+              return (
+                <div
+                  key={d.id}
+                  className="flex w-36 flex-col items-center gap-2 rounded-lg border bg-card p-3 text-center shadow-sm"
+                >
+                  <div className="h-16 w-16 shrink-0 overflow-hidden rounded-full border bg-muted">
+                    {photo ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={photo}
+                        alt={d.name}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                        <User className="h-7 w-7" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="w-full">
+                    <div className="break-words text-sm font-medium leading-tight">{d.name}</div>
+                    {d.role ? (
+                      <div className="mt-0.5 break-words text-xs text-muted-foreground">
+                        {d.role}
+                      </div>
+                    ) : null}
+                    {d.formation ? (
+                      <div className="mt-0.5 break-words text-xs italic text-muted-foreground">
+                        {d.formation}
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
     </div>
   );
 }

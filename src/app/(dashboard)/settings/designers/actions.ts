@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 export interface DesignerInput {
   name: string;
   role: string | null;
+  formation: string | null;
   photo_url: string | null;
 }
 
@@ -23,6 +24,7 @@ export async function createDesigner(input: DesignerInput) {
   const { error } = await supabase.from("cl_designers").insert({
     name,
     role: input.role?.trim() || null,
+    formation: input.formation?.trim() || null,
     photo_url: input.photo_url || null,
     created_by: user.id,
   });
@@ -48,6 +50,7 @@ export async function updateDesigner(id: string, input: DesignerInput) {
     .update({
       name,
       role: input.role?.trim() || null,
+      formation: input.formation?.trim() || null,
       photo_url: input.photo_url || null,
     })
     .eq("id", id)

@@ -2,7 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Clock, ImageIcon, LayoutGrid, Play, User } from "lucide-react";
+import {
+  Clock,
+  ImageIcon,
+  Play,
+  User,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { getDisciplineIcon } from "@/lib/disciplines/icon";
@@ -24,6 +29,8 @@ import type {
 } from "@/lib/supabase/types";
 
 import { readIdentity, writeIdentity } from "./identity-storage";
+import { DownloadFullReportButton } from "./pdf/download-buttons";
+import { PublicFooter, type PublicOfficeSettings } from "./public-footer";
 import { PublicSubmissionSummaryDialog } from "./public-submission-summary-dialog";
 
 export interface PublicSubmissionHistoryItem {
@@ -43,6 +50,7 @@ interface Props {
   formCount: number;
   publicBaseUrl: string;
   history: PublicSubmissionHistoryItem[];
+  officeSettings: PublicOfficeSettings | null;
 }
 
 function formatDateTime(iso: string) {
@@ -76,6 +84,7 @@ export function PublicCover({
   formCount,
   publicBaseUrl,
   history,
+  officeSettings,
 }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -93,6 +102,11 @@ export function PublicCover({
   const coverUrl = project.image_url
     ? `${publicBaseUrl}/${project.image_url}`
     : null;
+
+  const officeLogoUrl = officeSettings?.logo_url
+    ? `${publicBaseUrl}/${officeSettings.logo_url}`
+    : null;
+  const officeName = officeSettings?.office_name ?? null;
 
   function handleStart() {
     const saved = readIdentity(token);
@@ -122,7 +136,7 @@ export function PublicCover({
   }
 
   return (
-    <div className="min-h-screen bg-muted/30">
+    <div className="flex min-h-screen flex-col bg-muted/30">
       <div className="relative h-72 w-full overflow-hidden bg-gradient-to-br from-primary/20 to-muted">
         {coverUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -137,7 +151,7 @@ export function PublicCover({
           </div>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-        <div className="absolute inset-x-0 bottom-0 p-6 text-white">
+        <div className="absolute inset-x-0 bottom-0 px-6 py-6 text-white">
           <div className="mx-auto max-w-5xl">
             <p className="text-xs uppercase tracking-wider text-white/80">
               Checklist do projeto
@@ -154,9 +168,18 @@ export function PublicCover({
         </div>
       </div>
 
-      <div className="mx-auto max-w-5xl space-y-8 px-4 py-10">
+      <div className="flex-1 px-6 py-10">
+        <div className="mx-auto max-w-5xl space-y-8">
         {designers.length > 0 ? (
-          <section>
+          <section className="pt-0 mt-[40px]">
+            {officeLogoUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={officeLogoUrl}
+                alt={officeName ?? "Logo"}
+                className="mt-[47px] mb-[47px] h-8 w-auto object-contain"
+              />
+            )}
             <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               Projetistas
             </h2>
@@ -204,16 +227,16 @@ export function PublicCover({
             <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               Disciplinas
             </h2>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-3">
               {disciplines.map((d) => {
                 const Icon = getDisciplineIcon(d.name);
                 return (
                   <div
                     key={d.id}
-                    className="inline-flex items-center gap-2 rounded-full border bg-background px-3 py-1.5 text-sm"
+                    className="flex flex-col items-center gap-2 rounded-xl border bg-background px-5 py-4 text-sm font-medium shadow-sm min-w-[80px]"
                   >
                     <Icon
-                      className="h-4 w-4"
+                      className="h-6 w-6"
                       style={{ color: d.color }}
                       aria-hidden
                     />
@@ -225,30 +248,15 @@ export function PublicCover({
           </section>
         ) : null}
 
-        <section className="rounded-lg border bg-background p-6 shadow-sm">
-          <div className="flex items-center gap-3 text-muted-foreground">
-            <LayoutGrid className="h-5 w-5" />
-            <p className="text-sm">
-              {formCount === 0 ? (
-                "Nenhum formulário disponível no momento."
-              ) : (
-                <>
-                  <strong className="text-foreground">{formCount}</strong>{" "}
-                  {formCount === 1
-                    ? "formulário disponível"
-                    : "formulários disponíveis"}{" "}
-                  para preenchimento.
-                </>
-              )}
-            </p>
-          </div>
+        <section className="rounded-lg border bg-background p-6 shadow-sm mb-8">
           <div className="mt-4 flex justify-end">
             <Button
               size="lg"
               onClick={handleStart}
               disabled={formCount === 0}
+              className="group animate-glow-pulse transition-all duration-200 hover:scale-105 active:scale-95"
             >
-              <Play className="mr-2 h-4 w-4" />
+              <Play className="mr-2 h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
               Iniciar preenchimento
             </Button>
           </div>
@@ -256,10 +264,16 @@ export function PublicCover({
 
         {history.length > 0 ? (
           <section>
-            <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-              <Clock className="h-4 w-4" />
-              Histórico de preenchimentos
-            </h2>
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                <Clock className="h-4 w-4" />
+                Histórico de preenchimentos
+              </h2>
+              <DownloadFullReportButton
+                token={token}
+                projectName={project.name}
+              />
+            </div>
             <div className="divide-y overflow-hidden rounded-lg border bg-background shadow-sm">
               {history.map((item) => (
                 <div
@@ -284,13 +298,17 @@ export function PublicCover({
                     submissionId={item.id}
                     clientName={item.client_name}
                     templateName={item.template_name}
+                    projectName={project.name}
                   />
                 </div>
               ))}
             </div>
           </section>
         ) : null}
+        </div>
       </div>
+
+      <PublicFooter officeSettings={officeSettings} />
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>

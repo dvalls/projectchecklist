@@ -1,12 +1,10 @@
-import Link from "next/link";
 import { FileText } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
 
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/layout/empty-state";
 import { PageHeader } from "@/components/layout/page-header";
+import { TemplateCard } from "@/components/templates/template-card";
 
 export const dynamic = "force-dynamic";
 
@@ -40,31 +38,14 @@ export default async function TemplatesPage() {
               cl_disciplines: { name: string; color: string } | null;
             }).cl_disciplines;
             return (
-              <Link key={t.id} href={`/templates/${t.id}`} className="block">
-                <Card className="h-full transition-colors hover:border-primary/40">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="line-clamp-1 text-base">
-                      {t.name}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="flex flex-wrap items-center gap-2">
-                    <Badge variant="secondary">
-                      {project?.name ?? "—"}
-                    </Badge>
-                    {discipline ? (
-                      <Badge
-                        variant="outline"
-                        style={{
-                          borderColor: discipline.color,
-                          color: discipline.color,
-                        }}
-                      >
-                        {discipline.name}
-                      </Badge>
-                    ) : null}
-                  </CardContent>
-                </Card>
-              </Link>
+              <TemplateCard
+                key={t.id}
+                id={t.id}
+                name={t.name}
+                projectId={t.project_id}
+                projectName={project?.name ?? null}
+                discipline={discipline ?? null}
+              />
             );
           })}
         </div>

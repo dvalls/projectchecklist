@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { LayoutGrid, Pencil, Plus, Trash2 } from "lucide-react";
+import { LayoutGrid, Pencil, Plus, Trash2, Check } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,10 @@ import { Label } from "@/components/ui/label";
 import { EmptyState } from "@/components/layout/empty-state";
 
 import type { ClDiscipline } from "@/lib/supabase/types";
+import {
+  DISCIPLINE_ICONS,
+  resolveDisciplineIcon,
+} from "@/lib/disciplines/icon";
 
 import {
   createDiscipline,
@@ -65,24 +69,11 @@ export function DisciplinesManager({ initialDisciplines }: Props) {
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {initialDisciplines.map((d) => (
-            <Card key={d.id}>
-              <CardContent className="flex items-center gap-3 p-4">
-                <span
-                  className="h-4 w-4 shrink-0 rounded-full"
-                  style={{ backgroundColor: d.color }}
-                />
-                <div className="flex-1 truncate font-medium">{d.name}</div>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="h-7 w-7"
-                  onClick={() => setEditing(d)}
-                >
-                  <Pencil className="h-3.5 w-3.5" />
-                </Button>
-                <DeleteButton discipline={d} />
-              </CardContent>
-            </Card>
+            <DisciplineCard
+              key={d.id}
+              discipline={d}
+              onEdit={() => setEditing(d)}
+            />
           ))}
         </div>
       )}
@@ -98,6 +89,39 @@ export function DisciplinesManager({ initialDisciplines }: Props) {
         />
       ) : null}
     </>
+  );
+}
+
+function DisciplineCard({
+  discipline,
+  onEdit,
+}: {
+  discipline: ClDiscipline;
+  onEdit: () => void;
+}) {
+  const Icon = resolveDisciplineIcon(discipline.icon, discipline.name);
+
+  return (
+    <Card>
+      <CardContent className="flex items-center gap-3 p-4">
+        <span
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
+          style={{ backgroundColor: `${discipline.color}20`, color: discipline.color }}
+        >
+          <Icon className="h-5 w-5" />
+        </span>
+        <div className="flex-1 truncate font-medium">{discipline.name}</div>
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-7 w-7"
+          onClick={onEdit}
+        >
+          <Pencil className="h-3.5 w-3.5" />
+        </Button>
+        <DeleteButton discipline={discipline} />
+      </CardContent>
+    </Card>
   );
 }
 
@@ -135,13 +159,16 @@ function DisciplineDialog({
 }) {
   const [name, setName] = useState(discipline?.name ?? "");
   const [color, setColor] = useState(discipline?.color ?? PALETTE[0]);
+  const [icon, setIcon] = useState<string | null>(discipline?.icon ?? null);
   const [isPending, startTransition] = useTransition();
+
+  const PreviewIcon = resolveDisciplineIcon(icon, name || discipline?.name);
 
   function handleSave() {
     startTransition(async () => {
       const res = discipline
-        ? await updateDiscipline(discipline.id, { name, color })
-        : await createDiscipline({ name, color });
+        ? await updateDiscipline(discipline.id, { name, color, icon })
+        : await createDiscipline({ name, color, icon });
       if (res.error) {
         toast.error(res.error);
         return;
@@ -153,7 +180,7 @@ function DisciplineDialog({
 
   return (
     <Dialog open onOpenChange={(v) => !v && onClose()}>
-      <DialogContent>
+      <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>
             {discipline ? "Editar disciplina" : "Nova disciplina"}
@@ -165,7 +192,20 @@ function DisciplineDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-5">
+          {/* Preview */}
+          <div className="flex items-center gap-3 rounded-lg border p-3">
+            <span
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
+              style={{ backgroundColor: `${color}20`, color }}
+            >
+              <PreviewIcon className="h-5 w-5" />
+            </span>
+            <span className="font-medium text-sm text-muted-foreground">
+              {name || "Nome da disciplina"}
+            </span>
+          </div>
+
           <div className="space-y-1.5">
             <Label htmlFor="discipline-name">Nome</Label>
             <Input
@@ -175,6 +215,47 @@ function DisciplineDialog({
               placeholder="Ex: Arquitetura"
             />
           </div>
+
+          <div className="space-y-1.5">
+            <Label>Ícone</Label>
+            <div className="grid grid-cols-5 gap-2">
+              {DISCIPLINE_ICONS.map((entry) => {
+                const EntryIcon = entry.icon;
+                const isSelected = icon === entry.name;
+                return (
+                  <button
+                    key={entry.name}
+                    type="button"
+                    title={entry.label}
+                    onClick={() => setIcon(entry.name)}
+                    className="relative flex flex-col items-center gap-1 rounded-lg border p-2 transition-colors hover:bg-accent"
+                    style={
+                      isSelected
+                        ? { borderColor: color, backgroundColor: `${color}15` }
+                        : {}
+                    }
+                  >
+                    <EntryIcon
+                      className="h-5 w-5"
+                      style={isSelected ? { color } : {}}
+                    />
+                    <span className="text-[10px] text-muted-foreground leading-tight text-center">
+                      {entry.label}
+                    </span>
+                    {isSelected && (
+                      <span
+                        className="absolute right-1 top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full"
+                        style={{ backgroundColor: color }}
+                      >
+                        <Check className="h-2.5 w-2.5 text-white" />
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           <div className="space-y-1.5">
             <Label>Cor</Label>
             <div className="flex flex-wrap gap-2">

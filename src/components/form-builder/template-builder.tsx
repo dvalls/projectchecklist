@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import {
   Group as PanelGroup,
   Panel,
@@ -24,7 +25,8 @@ import {
 import {
   ChevronDown,
   ChevronRight,
-  Maximize2,
+  MoreVertical,
+  Pencil,
   Plus,
   Save,
   Settings2,
@@ -48,6 +50,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -73,6 +82,8 @@ import type {
 } from "@/lib/supabase/types";
 
 import {
+  deleteTemplate,
+  renameTemplate,
   saveTemplate,
   type FieldInput,
   type SectionInput,
@@ -206,10 +217,16 @@ export function TemplateBuilder({
   const [justCreatedLocalId, setJustCreatedLocalId] = useState<string | null>(
     null,
   );
-  const [previewOpen, setPreviewOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [renameValue, setRenameValue] = useState("");
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const [isSaving, startSaving] = useTransition();
+  const [isRenaming, startRenaming] = useTransition();
+  const [isDeleting, startDeleting] = useTransition();
+
+  const router = useRouter();
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -388,6 +405,32 @@ export function TemplateBuilder({
     });
   }
 
+  function handleRename() {
+    if (!renameValue.trim()) return;
+    startRenaming(async () => {
+      const res = await renameTemplate(template.id, renameValue.trim());
+      if (res?.error) {
+        toast.error(res.error);
+      } else {
+        setName(renameValue.trim());
+        setRenameOpen(false);
+        toast.success("Formulário renomeado.");
+      }
+    });
+  }
+
+  function handleDelete() {
+    startDeleting(async () => {
+      const res = await deleteTemplate(template.id, template.project_id);
+      if (res?.error) {
+        toast.error(res.error);
+      } else {
+        toast.success("Formulário apagado.");
+        router.push(`/projects/${template.project_id}`);
+      }
+    });
+  }
+
   const previewSections = useMemo(
     () =>
       sections.map((s) => ({
@@ -462,28 +505,32 @@ export function TemplateBuilder({
           </DialogContent>
         </Dialog>
 
-        <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-          <DialogTrigger asChild>
-            <Button variant="outline" size="sm" title="Ver em tela cheia">
-              <Maximize2 className="mr-1.5 h-4 w-4" />
-              Tela cheia
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm" className="px-2" title="Mais opções">
+              <MoreVertical className="h-4 w-4" />
             </Button>
-          </DialogTrigger>
-          <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>{name || "(sem título)"}</DialogTitle>
-              {description ? (
-                <DialogDescription>{description}</DialogDescription>
-              ) : null}
-            </DialogHeader>
-            <PreviewBody
-              templateId={template.id}
-              previewSections={previewSections}
-              layoutMode={layoutMode}
-              environments={environments}
-            />
-          </DialogContent>
-        </Dialog>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
+              onClick={() => {
+                setRenameValue(name);
+                setRenameOpen(true);
+              }}
+            >
+              <Pencil className="mr-2 h-4 w-4" />
+              Renomear
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="text-destructive focus:bg-destructive focus:text-destructive-foreground"
+              onClick={() => setDeleteOpen(true)}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Apagar formulário
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         <Button onClick={handleSave} disabled={isSaving} size="sm">
           <Save className="mr-1.5 h-4 w-4" />
@@ -693,6 +740,79 @@ export function TemplateBuilder({
         </div>
         </Panel>
       </PanelGroup>
+
+      {/* Rename dialog */}
+      <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Renomear formulário</DialogTitle>
+            <DialogDescription>
+              Informe o novo nome para este formulário.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Novo nome</Label>
+              <Input
+                value={renameValue}
+                onChange={(e) => setRenameValue(e.target.value)}
+                placeholder="Nome do formulário"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleRename();
+                }}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setRenameOpen(false)}
+                disabled={isRenaming}
+              >
+                Cancelar
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleRename}
+                disabled={isRenaming || !renameValue.trim()}
+              >
+                {isRenaming ? "Salvando…" : "Renomear"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete confirmation dialog */}
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Apagar formulário?</DialogTitle>
+            <DialogDescription>
+              Esta ação é permanente e não pode ser desfeita. Todos os campos e
+              seções deste formulário serão removidos.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setDeleteOpen(false)}
+              disabled={isDeleting}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Apagando…" : "Apagar"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

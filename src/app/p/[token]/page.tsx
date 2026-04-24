@@ -6,6 +6,7 @@ import type {
   ClDiscipline,
   ClFormSubmission,
   ClFormTemplate,
+  ClOfficeSettings,
   ClProject,
   ClProjectDesigner,
   ClPublicLink,
@@ -61,6 +62,7 @@ export default async function PublicChecklistCoverPage({
     { data: templates },
     { data: projectDesigners },
     { data: submissions },
+    { data: officeSettingsData },
   ] = await Promise.all([
     supabase.from("cl_disciplines").select("*").order("position"),
     supabase
@@ -81,6 +83,11 @@ export default async function PublicChecklistCoverPage({
       .eq("public_link_id", typedLink.id)
       .eq("status", "submitted")
       .order("submitted_at", { ascending: false }),
+    supabase
+      .from("cl_office_settings")
+      .select("office_name, logo_url, website, instagram, facebook, linkedin, twitter, whatsapp")
+      .eq("user_id", (project as ClProject).created_by)
+      .maybeSingle(),
   ]);
 
   const typedProjectDesigners = (projectDesigners ?? []) as ClProjectDesigner[];
@@ -138,6 +145,18 @@ export default async function PublicChecklistCoverPage({
     submitted_at: s.submitted_at ?? s.created_at,
   }));
 
+  const officeSettings = officeSettingsData as Pick<
+    ClOfficeSettings,
+    | "office_name"
+    | "logo_url"
+    | "website"
+    | "instagram"
+    | "facebook"
+    | "linkedin"
+    | "twitter"
+    | "whatsapp"
+  > | null;
+
   return (
     <PublicCover
       token={typedLink.token}
@@ -147,6 +166,7 @@ export default async function PublicChecklistCoverPage({
       formCount={publicTemplates.length}
       publicBaseUrl={publicBaseUrl}
       history={history}
+      officeSettings={officeSettings}
     />
   );
 }

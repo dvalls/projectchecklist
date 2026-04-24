@@ -15,6 +15,7 @@ import type {
 } from "@/lib/supabase/types";
 
 import { NewProjectDialog } from "./new-project-dialog";
+import { ProjectCardMenu } from "./project-card-menu";
 import { ProjectPublicSubmissionsDialog } from "./project-public-submissions-dialog";
 
 export const dynamic = "force-dynamic";
@@ -97,48 +98,82 @@ export default async function ProjectsPage() {
           }
         />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {projects.map((project) => {
             const projectSubmissions =
               submissionsByProject.get(project.id) ?? [];
             const projectTemplates = templatesByProject.get(project.id) ?? [];
+            const visibleTemplates = projectTemplates.slice(0, 3);
+            const hiddenTemplatesCount =
+              projectTemplates.length - visibleTemplates.length;
             return (
               <Card
                 key={project.id}
-                className="flex h-full flex-col overflow-hidden transition-colors hover:border-primary/40"
+                className="group flex h-full flex-col overflow-hidden transition-colors hover:border-primary/40"
               >
-                <Link
-                  href={`/projects/${project.id}`}
-                  className="flex flex-1 flex-col"
-                >
-                  <div className="relative h-28 w-full shrink-0 overflow-hidden bg-gradient-to-br from-primary/10 to-muted">
-                    {project.image_url ? (
-                      <Image
-                        src={`${storageBaseUrl}/${project.image_url}`}
-                        alt={project.name}
-                        fill
-                        className="object-cover"
-                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                      />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center text-muted-foreground/40">
-                        <ImageIcon className="h-8 w-8" />
+                <div className="relative flex flex-1 flex-col">
+                  <Link
+                    href={`/projects/${project.id}`}
+                    className="flex flex-1 flex-col"
+                  >
+                    <div className="relative h-28 w-full shrink-0 overflow-hidden bg-gradient-to-br from-primary/10 to-muted">
+                      {project.image_url ? (
+                        <Image
+                          src={`${storageBaseUrl}/${project.image_url}`}
+                          alt={project.name}
+                          fill
+                          className="object-cover"
+                          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-muted-foreground/40">
+                          <ImageIcon className="h-8 w-8" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex flex-1 flex-col gap-1 px-4 py-3">
+                      <p className="line-clamp-1 font-semibold leading-tight">
+                        {project.name}
+                      </p>
+                      <p className="line-clamp-1 text-xs text-muted-foreground">
+                        {project.description || "Sem descrição"}
+                      </p>
+                      <div className="mt-auto pt-3">
+                        <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground/70">
+                          Formulários utilizados
+                        </p>
+                        {visibleTemplates.length > 0 ? (
+                          <ul className="flex flex-wrap gap-x-2 gap-y-1">
+                            {visibleTemplates.map((template) => (
+                              <li
+                                key={template.id}
+                                className="max-w-full truncate text-xs text-muted-foreground"
+                              >
+                                {template.name}
+                              </li>
+                            ))}
+                            {hiddenTemplatesCount > 0 ? (
+                              <li className="shrink-0 text-xs text-muted-foreground/70">
+                                +{hiddenTemplatesCount} formulário
+                                {hiddenTemplatesCount > 1 ? "s" : ""}
+                              </li>
+                            ) : null}
+                          </ul>
+                        ) : (
+                          <p className="text-xs text-muted-foreground/70">
+                            Nenhum formulário utilizado
+                          </p>
+                        )}
                       </div>
-                    )}
+                    </div>
+                  </Link>
+                  <div className="absolute right-2 top-2 z-10">
+                    <ProjectCardMenu
+                      projectId={project.id}
+                      projectName={project.name}
+                    />
                   </div>
-                  <div className="flex flex-1 flex-col gap-1 px-4 py-3">
-                    <p className="line-clamp-1 font-semibold leading-tight">
-                      {project.name}
-                    </p>
-                    <p className="line-clamp-1 text-xs text-muted-foreground">
-                      {project.description || "Sem descrição"}
-                    </p>
-                    <p className="mt-auto pt-2 text-xs text-muted-foreground/70">
-                      Criado em{" "}
-                      {new Date(project.created_at).toLocaleDateString("pt-BR")}
-                    </p>
-                  </div>
-                </Link>
+                </div>
                 <div className="border-t px-6 py-3">
                   <ProjectPublicSubmissionsDialog
                     projectName={project.name}
