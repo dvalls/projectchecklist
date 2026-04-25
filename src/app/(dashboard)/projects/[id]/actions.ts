@@ -19,8 +19,7 @@ export async function updateProjectCover(
   const { error } = await supabase
     .from("cl_projects")
     .update({ image_url: imageUrl })
-    .eq("id", projectId)
-    .eq("created_by", user.id);
+    .eq("id", projectId);
 
   if (error) return { error: error.message };
 
@@ -41,8 +40,7 @@ export async function updateProjectAllowResubmit(
   const { error } = await supabase
     .from("cl_projects")
     .update({ allow_resubmit_answers: allow })
-    .eq("id", projectId)
-    .eq("created_by", user.id);
+    .eq("id", projectId);
 
   if (error) return { error: error.message };
 
@@ -65,7 +63,6 @@ export async function setProjectDesigners(
     .from("cl_projects")
     .select("id")
     .eq("id", projectId)
-    .eq("created_by", user.id)
     .maybeSingle();
   if (!project) return { error: "Projeto não encontrado." };
 
@@ -124,7 +121,6 @@ export async function createProjectPublicLink(projectId: string) {
     .from("cl_projects")
     .select("id")
     .eq("id", projectId)
-    .eq("created_by", user.id)
     .maybeSingle();
   if (!project) return { error: "Projeto não encontrado." };
 
@@ -164,7 +160,6 @@ export async function setProjectLinkActive(
     .from("cl_public_links")
     .update({ is_active: isActive })
     .eq("id", linkId)
-    .eq("created_by", user.id)
     .select("project_id")
     .single();
 
@@ -187,15 +182,13 @@ export async function deleteProjectLink(linkId: string) {
     .from("cl_public_links")
     .select("project_id")
     .eq("id", linkId)
-    .eq("created_by", user.id)
     .maybeSingle();
   const typedExisting = existing as { project_id: string } | null;
 
   const { error } = await supabase
     .from("cl_public_links")
     .delete()
-    .eq("id", linkId)
-    .eq("created_by", user.id);
+    .eq("id", linkId);
 
   if (error) return { error: error.message };
 

@@ -75,24 +75,24 @@ export function PublicFillWrapper({
   return (
     <div className="flex min-h-screen flex-col bg-muted/30">
       <div className="border-b bg-background">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
+        <div className="mx-auto flex w-full max-w-5xl flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
           <Link
             href={backHref}
-            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+            className="inline-flex w-fit items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="h-4 w-4" />
             Voltar à lista
           </Link>
-          <div className="text-right text-xs text-muted-foreground">
-            <div className="font-medium text-foreground">
+          <div className="min-w-0 text-left text-xs text-muted-foreground sm:text-right">
+            <div className="truncate font-medium text-foreground">
               {identity.client_name}
             </div>
-            <div>{identity.client_email}</div>
+            <div className="truncate">{identity.client_email}</div>
           </div>
         </div>
       </div>
 
-      <div className="mx-auto max-w-5xl flex-1 px-4 py-8">
+      <div className="mx-auto w-full max-w-5xl flex-1 px-3 py-4 sm:px-4 sm:py-8">
         <PublicFormsFlow
           token={token}
           template={template}
