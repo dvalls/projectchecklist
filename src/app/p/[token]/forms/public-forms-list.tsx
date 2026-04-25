@@ -167,7 +167,7 @@ export function PublicFormsList({
   return (
     <div className="flex min-h-screen flex-col bg-muted/30">
       <div className="border-b bg-background">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-4">
+        <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-3 px-4 py-4">
           <Link
             href={`/p/${token}`}
             className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
@@ -175,12 +175,12 @@ export function PublicFormsList({
             <ArrowLeft className="h-4 w-4" />
             Voltar à capa
           </Link>
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-center gap-3">
             <div className="hidden text-right text-xs text-muted-foreground sm:block">
               <div className="font-medium text-foreground">
                 {identity.client_name}
               </div>
-              <div>{identity.client_email}</div>
+              <div className="truncate">{identity.client_email}</div>
             </div>
             <Button variant="ghost" size="sm" onClick={handleLogout}>
               <LogOut className="mr-1 h-3.5 w-3.5" />
@@ -190,9 +190,9 @@ export function PublicFormsList({
         </div>
       </div>
 
-      <div className="mx-auto max-w-5xl flex-1 space-y-6 px-4 py-8">
+      <div className="mx-auto w-full max-w-5xl flex-1 space-y-6 px-4 py-6 sm:py-8">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
+          <h1 className="break-words text-2xl font-semibold tracking-tight">
             {project.name}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -235,7 +235,7 @@ export function PublicFormsList({
                     {discipline?.name ?? "Sem disciplina"}
                   </h2>
                 </div>
-                <div className="grid gap-2 sm:grid-cols-[repeat(auto-fit,minmax(min(100%,27rem),27rem))]">
+                <div className="grid gap-2 sm:grid-cols-[repeat(auto-fit,minmax(min(100%,27rem),1fr))]">
                   {groupTemplates.map((t) => {
                     const completed = completedByTemplate.has(t.id);
                     const progress = progressByTemplate.get(t.id) ?? {
@@ -255,10 +255,10 @@ export function PublicFormsList({
                         className="block"
                       >
                         <Card className="h-full transition-colors hover:border-primary/40">
-                          <CardContent className="flex items-center justify-between gap-3 p-4">
+                          <CardContent className="flex items-start justify-between gap-3 p-4 sm:items-center">
                             <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2">
-                                <span className="truncate font-medium">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="min-w-0 break-words font-medium">
                                   {t.name}
                                 </span>
                                 {completed ? (
