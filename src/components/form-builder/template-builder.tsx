@@ -442,15 +442,16 @@ export function TemplateBuilder({
 
   return (
     <div className="space-y-4">
-      <div className="sticky top-14 z-20 -mx-4 flex items-center gap-3 border-b bg-background/80 px-4 py-2 backdrop-blur">
-        <div className="flex-1">
+      <div className="sticky top-14 z-20 -mx-4 flex flex-col gap-2 border-b bg-background/80 px-4 py-2 backdrop-blur sm:flex-row sm:items-center sm:gap-3">
+        <div className="min-w-0 flex-1">
           <Input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="h-auto border-0 bg-transparent px-0 text-xl font-semibold shadow-none focus-visible:ring-0"
+            className="h-auto border-0 bg-transparent px-0 text-lg font-semibold shadow-none focus-visible:ring-0 sm:text-xl"
             placeholder="Nome do formulário"
           />
         </div>
+        <div className="flex flex-wrap items-center gap-2">
         <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
           <DialogTrigger asChild>
             <Button variant="outline" size="sm">
@@ -536,22 +537,23 @@ export function TemplateBuilder({
           <Save className="mr-1.5 h-4 w-4" />
           {isSaving ? "Salvando…" : "Salvar"}
         </Button>
+        </div>
       </div>
 
       <PanelGroup
         orientation="horizontal"
-        className="!overflow-visible"
+        className="!block !overflow-visible lg:!flex"
         id="template-builder-panels"
       >
-        <Panel defaultSize={62} minSize={30} id="editor-panel">
-        <div className="min-w-0 space-y-3 pr-2">
-          <div className="flex items-center justify-between">
+        <Panel defaultSize={62} minSize={30} id="editor-panel" className="!overflow-visible lg:!overflow-hidden">
+        <div className="min-w-0 space-y-3 lg:pr-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="text-xs text-muted-foreground">
               {sections.length}{" "}
               {sections.length === 1 ? "seção" : "seções"} ·{" "}
               {fields.length} {fields.length === 1 ? "campo" : "campos"}
             </div>
-            <Button size="sm" variant="outline" onClick={addSection}>
+            <Button size="sm" variant="outline" onClick={addSection} className="w-full sm:w-auto">
               <Plus className="mr-1 h-3.5 w-3.5" />
               Nova seção
             </Button>
@@ -568,7 +570,7 @@ export function TemplateBuilder({
                 key={section.local_id}
                 className="overflow-hidden rounded-lg border bg-background"
               >
-                <div className="flex items-center gap-2 border-b bg-muted/30 px-2 py-1.5">
+                <div className="flex flex-wrap items-center gap-2 border-b bg-muted/30 px-2 py-1.5">
                   <button
                     type="button"
                     onClick={() => toggleSection(section.local_id)}
@@ -591,7 +593,7 @@ export function TemplateBuilder({
                       }))
                     }
                     placeholder="Título da seção"
-                    className="h-7 flex-1 border-0 bg-transparent px-1 font-semibold uppercase tracking-wide shadow-none focus-visible:ring-0"
+                    className="h-7 min-w-[12rem] flex-1 border-0 bg-transparent px-1 font-semibold uppercase tracking-wide shadow-none focus-visible:ring-0"
                   />
                   <Input
                     value={section.subtitle ?? ""}
@@ -605,7 +607,7 @@ export function TemplateBuilder({
                     className="h-7 hidden flex-1 border-0 bg-transparent px-1 italic text-muted-foreground shadow-none focus-visible:ring-0 md:block"
                   />
 
-                  <div className="flex items-center gap-1.5 pl-2">
+                  <div className="ml-auto flex items-center gap-1.5 pl-2">
                     <ColumnsPicker
                       value={section.columns}
                       onChange={(v) =>
@@ -707,8 +709,8 @@ export function TemplateBuilder({
           </div>
         </PanelResizeHandle>
 
-        <Panel defaultSize={38} minSize={20} id="preview-panel">
-        <div className="lg:sticky lg:top-28 lg:self-start pl-1">
+        <Panel defaultSize={38} minSize={20} id="preview-panel" className="mt-4 !overflow-visible lg:mt-0 lg:!overflow-hidden">
+        <div className="lg:sticky lg:top-28 lg:self-start lg:pl-1">
           <Card className="lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between gap-2">

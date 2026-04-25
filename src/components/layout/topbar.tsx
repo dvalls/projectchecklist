@@ -23,7 +23,7 @@ export function Topbar({ userEmail }: { userEmail: string }) {
       .join("") || "?";
 
   return (
-    <header className="sticky top-0 z-10 flex h-16 items-center gap-3 border-b bg-background px-6">
+    <header className="sticky top-0 z-10 flex h-14 items-center gap-3 border-b bg-background px-3 sm:h-16 sm:px-6">
       <Button asChild variant="ghost" className="-ml-2 h-10 px-2">
         <Link href="/" className="flex items-center gap-2">
           <ClipboardCheck className="h-6 w-6 text-primary" />
@@ -42,19 +42,19 @@ export function Topbar({ userEmail }: { userEmail: string }) {
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
-              className="flex h-10 items-center gap-2 px-2"
+              className="flex h-10 min-w-0 items-center gap-2 px-2"
             >
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
                 {initials}
               </div>
-              <span className="hidden text-sm text-muted-foreground md:inline">
+              <span className="hidden max-w-[12rem] truncate text-sm text-muted-foreground md:inline">
                 {userEmail}
               </span>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuContent align="end" className="w-[calc(100vw-2rem)] max-w-56">
             <DropdownMenuLabel className="font-normal">
-              <div className="flex flex-col gap-1">
+              <div className="flex min-w-0 flex-col gap-1">
                 <span className="text-xs text-muted-foreground">Logado como</span>
                 <span className="truncate text-sm font-medium">{userEmail}</span>
               </div>
