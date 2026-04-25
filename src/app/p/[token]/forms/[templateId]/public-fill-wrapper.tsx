@@ -99,7 +99,6 @@ export function PublicFillWrapper({
           sections={sections}
           fields={fields}
           identity={identity}
-          backHref={backHref}
           previousByField={previousByField}
           previousByMatrix={previousByMatrix}
           allowResubmit={allowResubmit}

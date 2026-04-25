@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -10,7 +10,9 @@ import {
   History,
   Lock,
   LogOut,
+  Send,
 } from "lucide-react";
+import { toast } from "sonner";
 
 import { getDisciplineIcon } from "@/lib/disciplines/icon";
 import { Badge } from "@/components/ui/badge";
@@ -24,8 +26,14 @@ import type {
   ClProject,
 } from "@/lib/supabase/types";
 
+import { createPublicSubmission } from "../actions";
 import { clearIdentity, readIdentity } from "../identity-storage";
-import { readDraftProgress } from "../draft-progress";
+import {
+  clearDraftProgress,
+  clearDraftSubmission,
+  readDraftProgress,
+  readDraftSubmission,
+} from "../draft-progress";
 import { PublicFooter, type PublicOfficeSettings } from "../public-footer";
 
 interface Props {
@@ -60,6 +68,7 @@ export function PublicFormsList({
     client_email: string;
   } | null>(null);
   const [hydrated, setHydrated] = useState(false);
+  const [isSubmitting, startSubmitting] = useTransition();
 
   useEffect(() => {
     const saved = readIdentity(token);
@@ -149,11 +158,78 @@ export function PublicFormsList({
   }, [templates, disciplines]);
 
   const total = templates.length;
-  const done = completedByTemplate.size;
+  const done = templates.filter((t) => completedByTemplate.has(t.id)).length;
+  const pendingTemplates = templates.filter((t) => !completedByTemplate.has(t.id));
+  const readyPendingTemplates = pendingTemplates.filter((t) => {
+    const progress = progressByTemplate.get(t.id);
+    const requiredTotal = requiredCountByTemplate[t.id] ?? 0;
+    return requiredTotal === 0 || Boolean(progress && progress.done >= progress.total);
+  });
+  const canSubmitAll =
+    pendingTemplates.length > 0 &&
+    readyPendingTemplates.length === pendingTemplates.length;
 
   function handleLogout() {
     clearIdentity(token);
     router.push(`/p/${token}`);
+  }
+
+  function handleSubmitAll() {
+    if (!identity) return;
+    if (pendingTemplates.length === 0) {
+      toast.success("Todos os formulários já foram enviados.");
+      return;
+    }
+    const incomplete = pendingTemplates.filter((t) => {
+      const progress = progressByTemplate.get(t.id);
+      const requiredTotal = requiredCountByTemplate[t.id] ?? 0;
+      return requiredTotal > 0 && (!progress || progress.done < progress.total);
+    });
+    if (incomplete.length > 0) {
+      toast.error(
+        `Complete os campos obrigatórios de ${incomplete[0].name} antes de enviar.`,
+      );
+      return;
+    }
+
+    const drafts = pendingTemplates.map((t) => ({
+      template: t,
+      draft: readDraftSubmission(token, t.id, identity.client_email),
+    }));
+    const missingDraft = drafts.find(
+      ({ template, draft }) =>
+        !draft && (requiredCountByTemplate[template.id] ?? 0) > 0,
+    );
+    if (missingDraft) {
+      toast.error(
+        `Abra ${missingDraft.template.name} para salvar as respostas antes de enviar.`,
+      );
+      return;
+    }
+
+    startSubmitting(async () => {
+      for (const { template, draft } of drafts) {
+        const res = await createPublicSubmission({
+          token,
+          template_id: template.id,
+          client_name: identity.client_name,
+          client_email: identity.client_email,
+          values: draft?.values ?? [],
+          matrix_values: draft?.matrix_values ?? [],
+        });
+
+        if (res && "error" in res && res.error) {
+          toast.error(`${template.name}: ${res.error}`);
+          return;
+        }
+
+        clearDraftProgress(token, template.id, identity.client_email);
+        clearDraftSubmission(token, template.id, identity.client_email);
+      }
+
+      toast.success("Todos os formulários foram enviados.");
+      router.refresh();
+    });
   }
 
   if (!hydrated || !identity) {
@@ -208,6 +284,28 @@ export function PublicFormsList({
             </p>
           ) : null}
         </div>
+
+        {templates.length > 0 ? (
+          <Card>
+            <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-medium">Envio geral</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Preencha os formulários e use este botão para enviar tudo de
+                  uma vez.
+                </p>
+              </div>
+              <Button
+                onClick={handleSubmitAll}
+                disabled={!canSubmitAll || isSubmitting}
+                className="sm:self-center"
+              >
+                <Send className="mr-2 h-4 w-4" />
+                {isSubmitting ? "Enviando..." : "Enviar todos os formulários"}
+              </Button>
+            </CardContent>
+          </Card>
+        ) : null}
 
         {templates.length === 0 ? (
           <Card>
