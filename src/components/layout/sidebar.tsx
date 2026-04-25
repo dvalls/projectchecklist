@@ -27,7 +27,7 @@ export function Sidebar() {
   if (collapsed) return null;
 
   return (
-    <aside className="sticky top-0 flex h-screen w-64 flex-col border-r bg-background">
+    <aside className="fixed inset-y-0 left-0 z-30 flex h-screen w-64 flex-col border-r bg-background shadow-lg md:sticky md:shadow-none">
       <div className="flex h-16 items-center justify-between gap-2 border-b px-4">
         <div className="flex items-center gap-2">
           <ClipboardCheck className="h-6 w-6 text-primary" />

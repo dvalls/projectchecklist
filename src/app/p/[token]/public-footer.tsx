@@ -87,13 +87,13 @@ export function PublicFooter({ officeSettings }: PublicFooterProps) {
   if (!officeName && socials.length === 0) return null;
 
   return (
-    <footer className="h-16 shrink-0 border-t bg-background">
-      <div className="mx-auto flex h-full max-w-5xl items-center justify-between gap-4 px-4">
+    <footer className="shrink-0 border-t bg-background">
+      <div className="mx-auto flex min-h-16 max-w-5xl flex-col items-center justify-center gap-3 px-4 py-4 text-center sm:flex-row sm:justify-between sm:text-left">
         {officeName && (
           <p className="text-sm font-medium text-muted-foreground">{officeName}</p>
         )}
         {socials.length > 0 && (
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center justify-center gap-4">
             {socials.map(({ href, label, icon: Icon }) => (
               <a
                 key={label}

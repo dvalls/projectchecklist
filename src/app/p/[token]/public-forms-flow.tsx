@@ -1,17 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
-import { CheckCircle2, History, Lock, Send } from "lucide-react";
-import { toast } from "sonner";
+import { useEffect, useMemo, useState } from "react";
+import { History, Lock } from "lucide-react";
 
 import {
-  clearDraftProgress,
+  readDraftSubmission,
+  type DraftSubmissionMatrixValue,
+  type DraftSubmissionValue,
+  writeDraftSubmission,
   writeDraftProgress,
 } from "./draft-progress";
 
 import { ImageDisplayField } from "@/components/form-builder/field-preview";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -38,11 +39,6 @@ import type {
   VisibleWhen,
 } from "@/lib/supabase/types";
 
-import {
-  createPublicSubmission,
-  type PublicSubmissionMatrixValueInput,
-  type PublicSubmissionValueInput,
-} from "./actions";
 import type {
   PreviousMatrixValuesMap,
   PreviousValuesMap,
@@ -54,8 +50,6 @@ interface Props {
   sections: ClFormSection[];
   fields: ClFormField[];
   identity: { client_name: string; client_email: string };
-  onDone?: () => void;
-  backHref?: string;
   previousByField?: PreviousValuesMap;
   previousByMatrix?: PreviousMatrixValuesMap;
   allowResubmit?: boolean;
@@ -148,44 +142,18 @@ function evaluateVisible(
   return true;
 }
 
-type Step = "form" | "done";
-
 export function PublicFormsFlow({
   token,
   template,
   sections,
   fields,
   identity,
-  onDone,
-  backHref,
   previousByField,
   previousByMatrix,
   allowResubmit = false,
 }: Props) {
-  const [step, setStep] = useState<Step>("form");
   const clientName = identity.client_name;
   const clientEmail = identity.client_email;
-
-  if (step === "done") {
-    return (
-      <Card>
-        <CardContent className="flex flex-col items-center justify-center gap-3 py-12 text-center">
-          <CheckCircle2 className="h-12 w-12 text-emerald-500" />
-          <h2 className="text-xl font-semibold">
-            Obrigado, {clientName.split(" ")[0]}!
-          </h2>
-          <p className="max-w-md text-sm text-muted-foreground">
-            Sua resposta foi registrada com sucesso.
-          </p>
-          {backHref ? (
-            <Button asChild variant="outline" className="mt-2">
-              <a href={backHref}>Voltar para a lista</a>
-            </Button>
-          ) : null}
-        </CardContent>
-      </Card>
-    );
-  }
 
   return (
     <PublicSubmissionForm
@@ -198,10 +166,6 @@ export function PublicFormsFlow({
       previousByField={previousByField ?? {}}
       previousByMatrix={previousByMatrix ?? {}}
       allowResubmit={allowResubmit}
-      onSuccess={() => {
-        setStep("done");
-        onDone?.();
-      }}
     />
   );
 }
@@ -216,7 +180,6 @@ function PublicSubmissionForm({
   previousByField,
   previousByMatrix,
   allowResubmit,
-  onSuccess,
 }: {
   token: string;
   template: ClFormTemplate;
@@ -227,12 +190,17 @@ function PublicSubmissionForm({
   previousByField: PreviousValuesMap;
   previousByMatrix: PreviousMatrixValuesMap;
   allowResubmit: boolean;
-  onSuccess: () => void;
 }) {
   const isMatrix = template.layout_mode === "matrix";
-  const environments = (template.environments ?? []) as string[];
+  const environments = useMemo(
+    () => (template.environments ?? []) as string[],
+    [template.environments],
+  );
 
-  const envScope = isMatrix ? environments : [undefined as string | undefined];
+  const envScope = useMemo(
+    () => (isMatrix ? environments : [undefined as string | undefined]),
+    [environments, isMatrix],
+  );
 
   function getPrevious(fieldId: string, env: string | undefined) {
     if (env) {
@@ -242,12 +210,27 @@ function PublicSubmissionForm({
   }
 
   const initialValues = useMemo<Record<string, FieldValue>>(() => {
+    const savedDraft = readDraftSubmission(token, template.id, clientEmail);
+    const savedValues = new Map(
+      savedDraft?.values.map((v) => [makeFieldKey(v.field_id), v.value]) ?? [],
+    );
+    const savedMatrixValues = new Map(
+      savedDraft?.matrix_values.map((v) => [
+        makeFieldKey(v.field_id, v.env_key),
+        v.value,
+      ]) ?? [],
+    );
     const out: Record<string, FieldValue> = {};
     for (const f of fields) {
       if (isDisplayOnly(f.type)) continue;
       for (const env of envScope) {
+        const saved = env
+          ? savedMatrixValues.get(makeFieldKey(f.id, env))
+          : savedValues.get(makeFieldKey(f.id));
         const prev = getPrevious(f.id, env);
-        if (prev && prev.value !== null) {
+        if (saved !== undefined && (allowResubmit || !prev)) {
+          out[makeFieldKey(f.id, env)] = { value: saved };
+        } else if (prev && prev.value !== null) {
           out[makeFieldKey(f.id, env)] = { value: prev.value };
         } else {
           out[makeFieldKey(f.id, env)] = {
@@ -258,12 +241,20 @@ function PublicSubmissionForm({
     }
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fields, isMatrix, previousByField, previousByMatrix]);
+  }, [
+    fields,
+    isMatrix,
+    token,
+    template.id,
+    clientEmail,
+    allowResubmit,
+    previousByField,
+    previousByMatrix,
+  ]);
 
   const [values, setValues] = useState<Record<string, FieldValue>>(
     initialValues,
   );
-  const [isSubmitting, startSubmitting] = useTransition();
 
   function setFieldValue(key: string, patch: Partial<FieldValue>) {
     setValues((prev) => ({
@@ -315,18 +306,9 @@ function PublicSubmissionForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fields, values, envScope]);
 
-  useEffect(() => {
-    if (progress.total === 0) return;
-    writeDraftProgress(token, template.id, clientEmail, {
-      done: progress.done,
-      total: progress.total,
-    });
-  }, [progress, token, template.id, clientEmail]);
-
-  function handleSubmit() {
-    const inputs: PublicSubmissionValueInput[] = [];
-    const matrixInputs: PublicSubmissionMatrixValueInput[] = [];
-
+  const draftSubmission = useMemo(() => {
+    const inputs: DraftSubmissionValue[] = [];
+    const matrixInputs: DraftSubmissionMatrixValue[] = [];
     for (const env of envScope) {
       for (const f of fields) {
         if (isDisplayOnly(f.type)) continue;
@@ -345,10 +327,7 @@ function PublicSubmissionForm({
                 })()
               : !v?.value;
           if (missing) {
-            toast.error(
-              `${f.label}${env ? ` (${env})` : ""}: obrigatório.`,
-            );
-            return;
+            continue;
           }
         }
 
@@ -369,37 +348,28 @@ function PublicSubmissionForm({
         }
       }
     }
+    return { values: inputs, matrix_values: matrixInputs };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fields, values, envScope, allowResubmit, previousByField, previousByMatrix]);
 
-    startSubmitting(async () => {
-      const res = await createPublicSubmission({
-        token,
-        template_id: template.id,
-        client_name: clientName,
-        client_email: clientEmail,
-        values: inputs,
-        matrix_values: matrixInputs,
-      });
-
-      if (res && "error" in res && res.error) {
-        toast.error(res.error);
-        return;
-      }
-
-      clearDraftProgress(token, template.id, clientEmail);
-      onSuccess();
+  useEffect(() => {
+    writeDraftProgress(token, template.id, clientEmail, {
+      done: progress.done,
+      total: progress.total,
     });
-  }
+    writeDraftSubmission(token, template.id, clientEmail, draftSubmission);
+  }, [progress, draftSubmission, token, template.id, clientEmail]);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{template.name}</CardTitle>
+    <Card className="overflow-hidden">
+      <CardHeader className="p-4 sm:p-6">
+        <CardTitle className="text-lg sm:text-xl">{template.name}</CardTitle>
         {template.description ? (
-          <p className="text-sm text-muted-foreground">
+          <p className="break-words text-sm text-muted-foreground">
             {template.description}
           </p>
         ) : null}
-        <p className="pt-2 text-xs text-muted-foreground">
+        <p className="break-words pt-2 text-xs text-muted-foreground">
           Respondendo como <strong>{clientName}</strong> ({clientEmail})
         </p>
         {progress.total > 0 ? (
@@ -417,7 +387,7 @@ function PublicSubmissionForm({
           </p>
         ) : null}
       </CardHeader>
-      <CardContent className="space-y-8">
+      <CardContent className="space-y-8 p-4 pt-0 sm:p-6 sm:pt-0">
         {hasAnyPrevious ? (
           <div
             className={
@@ -465,8 +435,12 @@ function PublicSubmissionForm({
           />
         )}
 
-        <div className="flex justify-end gap-2 border-t pt-4">
-          <Button onClick={handleSubmit} disabled={isSubmitting}>
+        <div className="flex flex-col gap-2 border-t pt-4 sm:flex-row sm:justify-end">
+          <Button
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+            className="w-full sm:w-auto"
+          >
             <Send className="mr-2 h-4 w-4" />
             {isSubmitting ? "Enviando..." : "Enviar"}
           </Button>
@@ -529,10 +503,12 @@ function StandardRenderer({
               </div>
             ) : null}
             <div
-              className="grid gap-4"
-              style={{
-                gridTemplateColumns: `repeat(${section.columns}, minmax(0, 1fr))`,
-              }}
+              className="grid grid-cols-1 gap-4 md:[grid-template-columns:var(--section-columns)]"
+              style={
+                {
+                  "--section-columns": `repeat(${section.columns}, minmax(0, 1fr))`,
+                } as React.CSSProperties
+              }
             >
               {sectionFields.map((field) => {
                 const key = makeFieldKey(field.id);
@@ -543,12 +519,15 @@ function StandardRenderer({
                 return (
                   <div
                     key={field.id}
-                    style={{
-                      gridColumn: `span ${Math.min(
-                        field.column_span,
-                        section.columns,
-                      )}`,
-                    }}
+                    className="md:[grid-column:var(--field-span)]"
+                    style={
+                      {
+                        "--field-span": `span ${Math.min(
+                          field.column_span,
+                          section.columns,
+                        )}`,
+                      } as React.CSSProperties
+                    }
                   >
                     <FieldInput
                       field={field}
@@ -599,7 +578,10 @@ function MatrixRenderer({
                 {section.title}
               </div>
             ) : null}
-            <div className="overflow-x-auto">
+            <p className="text-[11px] text-muted-foreground md:hidden">
+              Deslize a tabela para o lado para ver todos os ambientes.
+            </p>
+            <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
               <table className="w-full min-w-[720px] border-separate border-spacing-0">
                 <thead>
                   <tr>
@@ -857,7 +839,7 @@ function FieldInput({
               <label
                 key={c.value}
                 className={
-                  "flex items-center gap-2 text-sm " +
+                  "flex min-w-0 items-center gap-2 text-sm " +
                   (locked ? "cursor-not-allowed" : "cursor-pointer")
                 }
               >
@@ -871,12 +853,12 @@ function FieldInput({
                     updateGroup({ ...groupValue, selected: nextSelected });
                   }}
                 />
-                {c.label}
+                <span className="min-w-0 break-words">{c.label}</span>
               </label>
             );
           })}
           {opts.allow_other ? (
-            <div className="flex items-center gap-2 text-sm">
+            <div className="flex flex-col gap-2 text-sm sm:flex-row sm:items-center">
               <Checkbox
                 checked={groupValue.other !== undefined}
                 disabled={locked}
@@ -927,7 +909,7 @@ function FieldInput({
             <label
               key={c.value}
               className={
-                "flex items-center gap-2 text-sm " +
+                "flex min-w-0 items-center gap-2 text-sm " +
                 (locked ? "cursor-not-allowed" : "cursor-pointer")
               }
             >
@@ -938,7 +920,7 @@ function FieldInput({
                 disabled={locked}
                 onChange={() => onChange({ value: c.value })}
               />
-              {c.label}
+              <span className="min-w-0 break-words">{c.label}</span>
             </label>
           ))}
         </div>

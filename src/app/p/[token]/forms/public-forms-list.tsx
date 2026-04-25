@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -10,7 +10,9 @@ import {
   History,
   Lock,
   LogOut,
+  Send,
 } from "lucide-react";
+import { toast } from "sonner";
 
 import { getDisciplineIcon } from "@/lib/disciplines/icon";
 import { Badge } from "@/components/ui/badge";
@@ -25,8 +27,14 @@ import type {
   ClProject,
 } from "@/lib/supabase/types";
 
+import { createPublicSubmission } from "../actions";
 import { clearIdentity, readIdentity } from "../identity-storage";
-import { readDraftProgress } from "../draft-progress";
+import {
+  clearDraftProgress,
+  clearDraftSubmission,
+  readDraftProgress,
+  readDraftSubmission,
+} from "../draft-progress";
 import { PublicFooter, type PublicOfficeSettings } from "../public-footer";
 
 interface Props {
@@ -61,6 +69,7 @@ export function PublicFormsList({
     client_email: string;
   } | null>(null);
   const [hydrated, setHydrated] = useState(false);
+  const [isSubmitting, startSubmitting] = useTransition();
 
   useEffect(() => {
     const saved = readIdentity(token);
@@ -150,7 +159,16 @@ export function PublicFormsList({
   }, [templates, disciplines]);
 
   const total = templates.length;
-  const done = completedByTemplate.size;
+  const done = templates.filter((t) => completedByTemplate.has(t.id)).length;
+  const pendingTemplates = templates.filter((t) => !completedByTemplate.has(t.id));
+  const readyPendingTemplates = pendingTemplates.filter((t) => {
+    const progress = progressByTemplate.get(t.id);
+    const requiredTotal = requiredCountByTemplate[t.id] ?? 0;
+    return requiredTotal === 0 || Boolean(progress && progress.done >= progress.total);
+  });
+  const canSubmitAll =
+    pendingTemplates.length > 0 &&
+    readyPendingTemplates.length === pendingTemplates.length;
 
   function formatQuestionCount(count: number, singular: string, plural: string) {
     return `${count} ${count === 1 ? singular : plural}`;
@@ -159,6 +177,64 @@ export function PublicFormsList({
   function handleLogout() {
     clearIdentity(token);
     router.push(`/p/${token}`);
+  }
+
+  function handleSubmitAll() {
+    if (!identity) return;
+    if (pendingTemplates.length === 0) {
+      toast.success("Todos os formulários já foram enviados.");
+      return;
+    }
+    const incomplete = pendingTemplates.filter((t) => {
+      const progress = progressByTemplate.get(t.id);
+      const requiredTotal = requiredCountByTemplate[t.id] ?? 0;
+      return requiredTotal > 0 && (!progress || progress.done < progress.total);
+    });
+    if (incomplete.length > 0) {
+      toast.error(
+        `Complete os campos obrigatórios de ${incomplete[0].name} antes de enviar.`,
+      );
+      return;
+    }
+
+    const drafts = pendingTemplates.map((t) => ({
+      template: t,
+      draft: readDraftSubmission(token, t.id, identity.client_email),
+    }));
+    const missingDraft = drafts.find(
+      ({ template, draft }) =>
+        !draft && (requiredCountByTemplate[template.id] ?? 0) > 0,
+    );
+    if (missingDraft) {
+      toast.error(
+        `Abra ${missingDraft.template.name} para salvar as respostas antes de enviar.`,
+      );
+      return;
+    }
+
+    startSubmitting(async () => {
+      for (const { template, draft } of drafts) {
+        const res = await createPublicSubmission({
+          token,
+          template_id: template.id,
+          client_name: identity.client_name,
+          client_email: identity.client_email,
+          values: draft?.values ?? [],
+          matrix_values: draft?.matrix_values ?? [],
+        });
+
+        if (res && "error" in res && res.error) {
+          toast.error(`${template.name}: ${res.error}`);
+          return;
+        }
+
+        clearDraftProgress(token, template.id, identity.client_email);
+        clearDraftSubmission(token, template.id, identity.client_email);
+      }
+
+      toast.success("Todos os formulários foram enviados.");
+      router.refresh();
+    });
   }
 
   if (!hydrated || !identity) {
@@ -172,7 +248,7 @@ export function PublicFormsList({
   return (
     <div className="flex min-h-screen flex-col bg-muted/30">
       <div className="border-b bg-background">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-4">
+        <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-3 px-4 py-4">
           <Link
             href={`/p/${token}`}
             className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
@@ -180,12 +256,12 @@ export function PublicFormsList({
             <ArrowLeft className="h-4 w-4" />
             Voltar à capa
           </Link>
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-center gap-3">
             <div className="hidden text-right text-xs text-muted-foreground sm:block">
               <div className="font-medium text-foreground">
                 {identity.client_name}
               </div>
-              <div>{identity.client_email}</div>
+              <div className="truncate">{identity.client_email}</div>
             </div>
             <Button variant="ghost" size="sm" onClick={handleLogout}>
               <LogOut className="mr-1 h-3.5 w-3.5" />
@@ -195,9 +271,9 @@ export function PublicFormsList({
         </div>
       </div>
 
-      <div className="mx-auto max-w-5xl flex-1 space-y-6 px-4 py-8">
+      <div className="mx-auto w-full max-w-5xl flex-1 space-y-6 px-4 py-6 sm:py-8">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
+          <h1 className="break-words text-2xl font-semibold tracking-tight">
             {project.name}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -214,6 +290,28 @@ export function PublicFormsList({
           ) : null}
         </div>
 
+        {templates.length > 0 ? (
+          <Card>
+            <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-medium">Envio geral</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Preencha os formulários e use este botão para enviar tudo de
+                  uma vez.
+                </p>
+              </div>
+              <Button
+                onClick={handleSubmitAll}
+                disabled={!canSubmitAll || isSubmitting}
+                className="sm:self-center"
+              >
+                <Send className="mr-2 h-4 w-4" />
+                {isSubmitting ? "Enviando..." : "Enviar todos os formulários"}
+              </Button>
+            </CardContent>
+          </Card>
+        ) : null}
+
         {templates.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center gap-2 py-12 text-center">
@@ -227,52 +325,63 @@ export function PublicFormsList({
             {groups.map(({ discipline, templates: groupTemplates }) => {
               const Icon = getDisciplineIcon(discipline?.name);
               return (
-                <section key={discipline?.id ?? "no-discipline"}>
-                  <div className="mb-2 flex items-center gap-2">
-                    <Icon
-                      className="h-4 w-4"
-                      style={
-                        discipline ? { color: discipline.color } : undefined
-                      }
-                      aria-hidden
-                    />
-                    <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                      {discipline?.name ?? "Sem disciplina"}
-                    </h2>
-                  </div>
-                  <div className="grid gap-2 sm:grid-cols-[repeat(auto-fit,minmax(min(100%,27rem),27rem))]">
-                    {groupTemplates.map((t) => {
-                      const completed = completedByTemplate.has(t.id);
-                      const progress = progressByTemplate.get(t.id) ?? {
-                        done: 0,
-                        total: requiredCountByTemplate[t.id] ?? 0,
-                      };
-                      const hasRequired = progress.total > 0;
-                      const safeDone = Math.min(progress.done, progress.total);
-                      const remaining = Math.max(progress.total - safeDone, 0);
-                      const progressValue = hasRequired
-                        ? Math.round((safeDone / progress.total) * 100)
-                        : 0;
-                      const isComplete =
-                        completed ||
-                        (hasRequired && safeDone >= progress.total);
-                      const hasPrevious = Boolean(
-                        hasPreviousByTemplate[t.id],
-                      );
-                      return (
-                        <Link
-                          key={t.id}
-                          href={`/p/${token}/forms/${t.id}`}
-                          className="block"
-                        >
-                          <Card className="flex h-full flex-col overflow-hidden transition-colors hover:border-primary/40">
-                            <CardContent className="flex flex-1 items-center justify-between gap-3 p-4">
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-2">
-                                  <span className="truncate font-medium">
-                                    {t.name}
-                                  </span>
-                                  {completed ? (
+              <section key={discipline?.id ?? "no-discipline"}>
+                <div className="mb-2 flex items-center gap-2">
+                  <Icon
+                    className="h-4 w-4"
+                    style={
+                      discipline ? { color: discipline.color } : undefined
+                    }
+                    aria-hidden
+                  />
+                  <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                    {discipline?.name ?? "Sem disciplina"}
+                  </h2>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-[repeat(auto-fit,minmax(min(100%,27rem),1fr))]">
+                  {groupTemplates.map((t) => {
+                    const completed = completedByTemplate.has(t.id);
+                    const progress = progressByTemplate.get(t.id) ?? {
+                      done: 0,
+                      total: requiredCountByTemplate[t.id] ?? 0,
+                    };
+                    const hasRequired = progress.total > 0;
+                    const isComplete =
+                      completed || (hasRequired && progress.done >= progress.total);
+                    const hasPrevious = Boolean(
+                      hasPreviousByTemplate[t.id],
+                    );
+                    return (
+                      <Link
+                        key={t.id}
+                        href={`/p/${token}/forms/${t.id}`}
+                        className="block"
+                      >
+                        <Card className="h-full transition-colors hover:border-primary/40">
+                          <CardContent className="flex items-start justify-between gap-3 p-4 sm:items-center">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="min-w-0 break-words font-medium">
+                                  {t.name}
+                                </span>
+                                {completed ? (
+                                  <Badge
+                                    variant="outline"
+                                    className="border-emerald-500 text-emerald-600"
+                                  >
+                                    <CheckCircle2 className="mr-1 h-3 w-3" />
+                                    Concluído
+                                  </Badge>
+                                ) : null}
+                              </div>
+                              {t.description ? (
+                                <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
+                                  {t.description}
+                                </p>
+                              ) : null}
+                              {hasRequired || hasPrevious ? (
+                                <div className="mt-2 flex flex-wrap items-center gap-2">
+                                  {hasRequired ? (
                                     <Badge
                                       variant="outline"
                                       className="border-emerald-500 text-emerald-600"
