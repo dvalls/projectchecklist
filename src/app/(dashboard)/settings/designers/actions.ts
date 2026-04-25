@@ -53,8 +53,7 @@ export async function updateDesigner(id: string, input: DesignerInput) {
       formation: input.formation?.trim() || null,
       photo_url: input.photo_url || null,
     })
-    .eq("id", id)
-    .eq("created_by", user.id);
+    .eq("id", id);
 
   if (error) return { error: error.message };
 
@@ -72,8 +71,7 @@ export async function deleteDesigner(id: string) {
   const { error } = await supabase
     .from("cl_designers")
     .delete()
-    .eq("id", id)
-    .eq("created_by", user.id);
+    .eq("id", id);
 
   if (error) return { error: error.message };
 
