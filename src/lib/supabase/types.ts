@@ -22,6 +22,7 @@ export interface Choice {
   label: string;
   value: string;
   recommended?: boolean;
+  description?: string;
 }
 
 export interface FieldOptionsShape {

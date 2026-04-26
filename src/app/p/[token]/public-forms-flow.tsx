@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { History, Lock } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { History, Lock, Search, X } from "lucide-react";
 
 import {
   readDraftSubmission,
@@ -174,6 +174,7 @@ function PublicSubmissionForm({
 
   const [values, setValues] = useState<Record<string, FieldValue>>(initialValues);
   const [filter, setFilter] = useState<FieldFilter>("all");
+  const [search, setSearch] = useState("");
 
   function setFieldValue(key: string, patch: Partial<FieldValue>) {
     setValues((prev) => ({
@@ -358,7 +359,13 @@ function PublicSubmissionForm({
           </p>
         ) : (
           <>
-            <FilterBar filter={filter} counts={filterCounts} onChange={setFilter} />
+            <FilterBar
+              filter={filter}
+              counts={filterCounts}
+              onChange={setFilter}
+              search={search}
+              onSearchChange={setSearch}
+            />
             {isMatrix ? (
               <MatrixRenderer
                 sections={sections}
@@ -369,6 +376,7 @@ function PublicSubmissionForm({
                 previousByMatrix={previousByMatrix}
                 allowResubmit={allowResubmit}
                 filter={filter}
+                search={search}
               />
             ) : (
               <StandardRenderer
@@ -379,6 +387,7 @@ function PublicSubmissionForm({
                 previousByField={previousByField}
                 allowResubmit={allowResubmit}
                 filter={filter}
+                search={search}
               />
             )}
             {filter !== "all" && filterCounts[filter] === 0 ? (
@@ -403,6 +412,7 @@ function StandardRenderer({
   previousByField,
   allowResubmit,
   filter,
+  search,
 }: {
   sections: ClFormSection[];
   fields: ClFormField[];
@@ -411,7 +421,9 @@ function StandardRenderer({
   previousByField: PreviousValuesMap;
   allowResubmit: boolean;
   filter: FieldFilter;
+  search: string;
 }) {
+  const needle = search.trim().toLowerCase();
   const sectionList =
     sections.length > 0
       ? sections
@@ -438,6 +450,11 @@ function StandardRenderer({
         const filteredFields = sectionFields.filter((field) => {
           const visible = evaluateVisible(field.visible_when, values);
           if (!visible) return false;
+          if (needle) {
+            const label = (field.label ?? "").toLowerCase();
+            const help = (field.help_text ?? "").toLowerCase();
+            if (!label.includes(needle) && !help.includes(needle)) return false;
+          }
           if (filter === "all") return true;
           if (isDisplayOnly(field.type)) return false;
           const key = makeFieldKey(field.id);
@@ -512,6 +529,7 @@ function MatrixRenderer({
   previousByMatrix,
   allowResubmit,
   filter,
+  search,
 }: {
   sections: ClFormSection[];
   fields: ClFormField[];
@@ -521,8 +539,16 @@ function MatrixRenderer({
   previousByMatrix: PreviousMatrixValuesMap;
   allowResubmit: boolean;
   filter: FieldFilter;
+  search: string;
 }) {
-  const rows = fields.filter((f) => !isDisplayOnly(f.type));
+  const needle = search.trim().toLowerCase();
+  const rows = fields.filter((f) => {
+    if (isDisplayOnly(f.type)) return false;
+    if (!needle) return true;
+    const label = (f.label ?? "").toLowerCase();
+    const help = (f.help_text ?? "").toLowerCase();
+    return label.includes(needle) || help.includes(needle);
+  });
 
   function rowMatchesFilter(field: ClFormField): boolean {
     if (filter === "all") return true;
@@ -636,11 +662,16 @@ function FilterBar({
   filter,
   counts,
   onChange,
+  search,
+  onSearchChange,
 }: {
   filter: FieldFilter;
   counts: { all: number; filled: number; unfilled: number };
   onChange: (next: FieldFilter) => void;
+  search: string;
+  onSearchChange: (value: string) => void;
 }) {
+  const inputRef = useRef<HTMLInputElement>(null);
   const options: Array<{ key: FieldFilter; label: string }> = [
     { key: "all", label: "Todos" },
     { key: "unfilled", label: "Não preenchidos" },
@@ -676,6 +707,30 @@ function FilterBar({
             </Button>
           );
         })}
+      </div>
+      <div className="relative ml-auto w-full sm:w-48">
+        <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+        <input
+          ref={inputRef}
+          type="text"
+          value={search}
+          onChange={(e) => onSearchChange(e.target.value)}
+          placeholder="Buscar..."
+          className="h-8 w-full rounded-md border bg-background pl-8 pr-8 text-sm outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        />
+        {search ? (
+          <button
+            type="button"
+            onClick={() => {
+              onSearchChange("");
+              inputRef.current?.focus();
+            }}
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            aria-label="Limpar busca"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        ) : null}
       </div>
     </div>
   );
@@ -855,18 +910,19 @@ function FieldInput({
       ) : null}
 
       {field.type === "checkbox_group" && groupValue ? (
-        <div className="space-y-1.5 pt-1">
+        <div className="space-y-2 pt-1">
           {choices.map((c) => {
             const checked = groupValue.selected.includes(c.value);
             return (
               <label
                 key={c.value}
                 className={
-                  "flex min-w-0 items-center gap-2 text-sm " +
+                  "flex min-w-0 gap-2 text-sm " +
                   (locked ? "cursor-not-allowed" : "cursor-pointer")
                 }
               >
                 <Checkbox
+                  className="mt-0.5 shrink-0"
                   checked={checked}
                   disabled={locked}
                   onCheckedChange={(v) => {
@@ -876,7 +932,14 @@ function FieldInput({
                     updateGroup({ ...groupValue, selected: nextSelected });
                   }}
                 />
-                <span className="min-w-0 break-words">{c.label}</span>
+                <span className="min-w-0 break-words">
+                  {c.label}
+                  {c.description ? (
+                    <span className="mt-0.5 block text-xs italic text-muted-foreground">
+                      {c.description}
+                    </span>
+                  ) : null}
+                </span>
               </label>
             );
           })}

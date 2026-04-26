@@ -238,6 +238,7 @@ export function PublicFormsList({
 
         if (res && "error" in res && res.error) {
           toast.error(`${template.name}: ${res.error}`);
+          router.refresh();
           return;
         }
 

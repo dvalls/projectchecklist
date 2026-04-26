@@ -139,17 +139,24 @@ export function FieldPreview({
         </div>
       ) : null}
       {field.type === "checkbox_group" ? (
-        <div className="space-y-1.5 pt-1">
+        <div className="space-y-2 pt-1">
           {choices.length === 0 ? (
             <p className="text-xs text-muted-foreground">(adicione opções)</p>
           ) : (
             choices.map((c) => (
               <label
                 key={c.value}
-                className="flex items-center gap-2 text-sm text-muted-foreground"
+                className="flex gap-2 text-sm text-muted-foreground"
               >
-                <Checkbox disabled />
-                <ChoiceLabel label={c.label} recommended={c.recommended} />
+                <Checkbox disabled className="mt-0.5 shrink-0" />
+                <span className="min-w-0 break-words">
+                  <ChoiceLabel label={c.label} recommended={c.recommended} />
+                  {c.description ? (
+                    <span className="mt-0.5 block text-xs italic">
+                      {c.description}
+                    </span>
+                  ) : null}
+                </span>
               </label>
             ))
           )}

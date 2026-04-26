@@ -19,6 +19,11 @@ ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
 ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
 ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
 
+# Server-only secrets (e.g. SUPABASE_SERVICE_ROLE_KEY) are injected at runtime
+# via `fly secrets`. Skip env validation during build so `next build` can
+# collect page data without the secrets being present.
+ENV SKIP_ENV_VALIDATION=1
+
 RUN npm run build
 
 FROM base AS runner

@@ -376,6 +376,7 @@ export function FieldAccordionItem({
               choices={choices}
               allowOther={allowOther}
               showAllowOther={field.type === "checkbox_group"}
+              showDescription={field.type === "checkbox_group"}
               onAdd={() =>
                 onChange((f) => {
                   const current =
@@ -412,6 +413,22 @@ export function FieldAccordionItem({
                               .replace(/[^a-z0-9_]/g, "") || `opt_${i + 1}`,
                         }
                       : c,
+                  );
+                  return {
+                    ...f,
+                    options: {
+                      ...(f.options as Exclude<FieldOptions, null>),
+                      choices: next,
+                    },
+                  };
+                })
+              }
+              onChangeDescription={(idx, description) =>
+                onChange((f) => {
+                  const current =
+                    (f.options as Exclude<FieldOptions, null>)?.choices ?? [];
+                  const next = current.map((c, i) =>
+                    i === idx ? { ...c, description: description || undefined } : c,
                   );
                   return {
                     ...f,
@@ -666,17 +683,21 @@ function ChoicesEditor({
   choices,
   allowOther,
   showAllowOther,
+  showDescription,
   onAdd,
   onChangeLabel,
+  onChangeDescription,
   onToggleRecommended,
   onRemove,
   onToggleAllowOther,
 }: {
-  choices: { label: string; value: string; recommended?: boolean }[];
+  choices: { label: string; value: string; recommended?: boolean; description?: string }[];
   allowOther: boolean;
   showAllowOther: boolean;
+  showDescription: boolean;
   onAdd: () => void;
   onChangeLabel: (idx: number, label: string) => void;
+  onChangeDescription: (idx: number, description: string) => void;
   onToggleRecommended: (idx: number, checked: boolean) => void;
   onRemove: (idx: number) => void;
   onToggleAllowOther: (checked: boolean) => void;
@@ -693,57 +714,67 @@ function ChoicesEditor({
       {choices.length === 0 ? (
         <p className="text-xs text-muted-foreground">Adicione pelo menos uma opção.</p>
       ) : (
-        <div className="space-y-1.5">
+        <div className="space-y-3">
           {choices.map((choice, idx) => {
             const isRecommended = Boolean(choice.recommended);
             return (
-              <div key={idx} className="flex items-center gap-1.5">
-                <Input
-                  value={choice.label}
-                  onChange={(e) => onChangeLabel(idx, e.target.value)}
-                  className="h-8 flex-1"
-                  placeholder="Texto da opção"
-                />
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="ghost"
-                  className={cn(
-                    "h-8 w-8",
-                    isRecommended
-                      ? "text-amber-500 hover:text-amber-600"
-                      : "text-muted-foreground",
-                  )}
-                  onClick={() => onToggleRecommended(idx, !isRecommended)}
-                  title={
-                    isRecommended
-                      ? `Remover recomendação (${RECOMMENDED_LABEL})`
-                      : `Marcar como recomendado (${RECOMMENDED_LABEL})`
-                  }
-                  aria-pressed={isRecommended}
-                  aria-label={
-                    isRecommended
-                      ? "Remover recomendação StudioBIM"
-                      : "Marcar como recomendado pela StudioBIM"
-                  }
-                >
-                  <Star
-                    className={cn(
-                      "h-3.5 w-3.5",
-                      isRecommended && "fill-amber-400 text-amber-500",
-                    )}
+              <div key={idx} className="space-y-1">
+                <div className="flex items-center gap-1.5">
+                  <Input
+                    value={choice.label}
+                    onChange={(e) => onChangeLabel(idx, e.target.value)}
+                    className="h-8 flex-1"
+                    placeholder="Texto da opção"
                   />
-                </Button>
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="ghost"
-                  className="h-8 w-8"
-                  onClick={() => onRemove(idx)}
-                  aria-label="Remover opção"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className={cn(
+                      "h-8 w-8",
+                      isRecommended
+                        ? "text-amber-500 hover:text-amber-600"
+                        : "text-muted-foreground",
+                    )}
+                    onClick={() => onToggleRecommended(idx, !isRecommended)}
+                    title={
+                      isRecommended
+                        ? `Remover recomendação (${RECOMMENDED_LABEL})`
+                        : `Marcar como recomendado (${RECOMMENDED_LABEL})`
+                    }
+                    aria-pressed={isRecommended}
+                    aria-label={
+                      isRecommended
+                        ? "Remover recomendação StudioBIM"
+                        : "Marcar como recomendado pela StudioBIM"
+                    }
+                  >
+                    <Star
+                      className={cn(
+                        "h-3.5 w-3.5",
+                        isRecommended && "fill-amber-400 text-amber-500",
+                      )}
+                    />
+                  </Button>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8"
+                    onClick={() => onRemove(idx)}
+                    aria-label="Remover opção"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+                {showDescription ? (
+                  <Input
+                    value={choice.description ?? ""}
+                    onChange={(e) => onChangeDescription(idx, e.target.value)}
+                    className="h-7 text-xs"
+                    placeholder="Descrição da opção (opcional)"
+                  />
+                ) : null}
               </div>
             );
           })}

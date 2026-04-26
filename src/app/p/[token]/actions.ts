@@ -143,6 +143,7 @@ export async function createPublicSubmission(input: CreatePublicSubmissionInput)
 
   revalidatePath(`/templates/${templateId}`);
   revalidatePath(`/projects/${typedLink.project_id}`);
+  revalidatePath(`/p/${input.token}/forms`);
 
   return { success: true, submissionId: typedSubmission.id };
 }
