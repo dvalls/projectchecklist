@@ -85,14 +85,8 @@ export function FieldAccordionItem({
   onDelete,
   onMoveToSection,
 }: Props) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: field.localId });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: field.localId });
 
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const labelInputRef = useRef<HTMLInputElement>(null);
@@ -127,9 +121,7 @@ export function FieldAccordionItem({
   const choicesCount = choices.length;
 
   const needsChoices =
-    field.type === "select" ||
-    field.type === "radio" ||
-    field.type === "checkbox_group";
+    field.type === "select" || field.type === "radio" || field.type === "checkbox_group";
 
   const triggerCandidates = allFields.filter(
     (f) =>
@@ -150,9 +142,7 @@ export function FieldAccordionItem({
       style={style}
       className={cn(
         "overflow-hidden rounded-md border bg-background transition-colors",
-        expanded
-          ? "border-foreground shadow-sm"
-          : "border-border hover:bg-muted/40",
+        expanded ? "border-foreground shadow-sm" : "border-border hover:bg-muted/40",
       )}
     >
       <div
@@ -228,9 +218,7 @@ export function FieldAccordionItem({
             {needsChoices && choicesCount === 0 ? (
               <>
                 <span>·</span>
-                <span className="text-destructive-foreground">
-                  sem opções
-                </span>
+                <span className="text-destructive-foreground">sem opções</span>
               </>
             ) : null}
           </div>
@@ -276,15 +264,13 @@ export function FieldAccordionItem({
             <Input
               ref={labelInputRef}
               value={field.label}
-              onChange={(e) =>
-                onChange((f) => ({ ...f, label: e.target.value }))
-              }
+              onChange={(e) => onChange((f) => ({ ...f, label: e.target.value }))}
               placeholder={
                 isInfo
                   ? "Ex.: Observações"
                   : isImage
-                  ? "Ex.: Planta baixa"
-                  : "Ex.: Tamanho do ambiente"
+                    ? "Ex.: Planta baixa"
+                    : "Ex.: Tamanho do ambiente"
               }
             />
           </div>
@@ -299,32 +285,29 @@ export function FieldAccordionItem({
                     nextType === "select" ||
                     nextType === "radio" ||
                     nextType === "checkbox_group";
-                  const prevOpts =
-                    (f.options as Exclude<FieldOptions, null>) ?? {};
+                  const prevOpts = (f.options as Exclude<FieldOptions, null>) ?? {};
                   return {
                     ...f,
                     type: nextType,
                     required:
-                      nextType === "info" || nextType === "image"
-                        ? false
-                        : f.required,
+                      nextType === "info" || nextType === "image" ? false : f.required,
                     options: keepChoices
                       ? {
                           choices: prevOpts.choices ?? [],
                           allow_other:
                             nextType === "checkbox_group"
-                              ? prevOpts.allow_other ?? false
+                              ? (prevOpts.allow_other ?? false)
                               : undefined,
                         }
                       : nextType === "info"
-                      ? { content: prevOpts.content ?? "" }
-                      : nextType === "image"
-                      ? {
-                          image_url: prevOpts.image_url ?? null,
-                          image_caption: prevOpts.image_caption ?? null,
-                          image_link: prevOpts.image_link ?? null,
-                        }
-                      : null,
+                        ? { content: prevOpts.content ?? "" }
+                        : nextType === "image"
+                          ? {
+                              image_url: prevOpts.image_url ?? null,
+                              image_caption: prevOpts.image_caption ?? null,
+                              image_link: prevOpts.image_link ?? null,
+                            }
+                          : null,
                   };
                 })
               }
@@ -583,8 +566,7 @@ export function FieldAccordionItem({
                             ...f,
                             visible_when: checked
                               ? {
-                                  field_id:
-                                    triggerCandidates[0]?.localId ?? "",
+                                  field_id: triggerCandidates[0]?.localId ?? "",
                                   op: "truthy",
                                   value: "",
                                 }
@@ -709,9 +691,7 @@ function ChoicesEditor({
         </Button>
       </div>
       {choices.length === 0 ? (
-        <p className="text-xs text-muted-foreground">
-          Adicione pelo menos uma opção.
-        </p>
+        <p className="text-xs text-muted-foreground">Adicione pelo menos uma opção.</p>
       ) : (
         <div className="space-y-1.5">
           {choices.map((choice, idx) => {
@@ -773,13 +753,9 @@ function ChoicesEditor({
         <label className="flex cursor-pointer items-center gap-2 pt-1">
           <Checkbox
             checked={allowOther}
-            onCheckedChange={(checked) =>
-              onToggleAllowOther(Boolean(checked))
-            }
+            onCheckedChange={(checked) => onToggleAllowOther(Boolean(checked))}
           />
-          <span className="text-sm">
-            Incluir opção &quot;Outra&quot; com texto livre
-          </span>
+          <span className="text-sm">Incluir opção &quot;Outra&quot; com texto livre</span>
         </label>
       ) : null}
       <p className="flex items-center gap-1 pt-1 text-[11px] text-muted-foreground">
@@ -815,9 +791,7 @@ function RecommendedValueEditor({
             <button
               key={opt.key}
               type="button"
-              onClick={() =>
-                onChange(opt.key === "none" ? null : opt.key)
-              }
+              onClick={() => onChange(opt.key === "none" ? null : opt.key)}
               className={cn(
                 "flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-colors",
                 active
@@ -1009,8 +983,8 @@ function ImageEditor({
           type="url"
         />
         <p className="text-[11px] text-muted-foreground">
-          Se preenchido, clicar na imagem abre este link em uma nova aba. Se
-          vazio, clicar abre a imagem em tamanho original.
+          Se preenchido, clicar na imagem abre este link em uma nova aba. Se vazio, clicar
+          abre a imagem em tamanho original.
         </p>
       </div>
     </div>

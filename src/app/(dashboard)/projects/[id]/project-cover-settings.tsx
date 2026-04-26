@@ -5,12 +5,7 @@ import { ImageIcon, Loader2, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 import { createClient } from "@/lib/supabase/client";
 
@@ -86,19 +81,13 @@ export function ProjectCoverSettings({
     <Card>
       <CardHeader>
         <CardTitle>Imagem de capa do projeto</CardTitle>
-        <p className="text-sm text-muted-foreground">
-          Aparece na capa do link público.
-        </p>
+        <p className="text-sm text-muted-foreground">Aparece na capa do link público.</p>
       </CardHeader>
       <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-start">
         <div className="relative h-40 w-full overflow-hidden rounded-md border bg-muted sm:w-64">
           {preview ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={preview}
-              alt="Capa"
-              className="h-full w-full object-cover"
-            />
+            <img src={preview} alt="Capa" className="h-full w-full object-cover" />
           ) : (
             <div className="flex h-full w-full items-center justify-center text-muted-foreground">
               <ImageIcon className="h-10 w-10" />
@@ -124,12 +113,7 @@ export function ProjectCoverSettings({
             />
           </label>
           {imageUrl ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleRemove}
-              disabled={isPending}
-            >
+            <Button variant="ghost" size="sm" onClick={handleRemove} disabled={isPending}>
               <X className="mr-1 h-3.5 w-3.5" />
               Remover capa
             </Button>

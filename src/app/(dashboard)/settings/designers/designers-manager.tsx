@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EmptyState } from "@/components/layout/empty-state";
 
 import { createClient } from "@/lib/supabase/client";
@@ -82,7 +83,7 @@ export function DesignersManager({ initialDesigners, publicBaseUrl }: Props) {
                       </div>
                     ) : null}
                     {d.formation ? (
-                      <div className="truncate text-xs text-muted-foreground/70 italic">
+                      <div className="truncate text-xs italic text-muted-foreground/70">
                         {d.formation}
                       </div>
                     ) : null}
@@ -127,7 +128,6 @@ function DeleteButton({ designer }: { designer: ClDesigner }) {
   const [isPending, startTransition] = useTransition();
 
   function handleDelete() {
-    if (!confirm(`Remover o projetista "${designer.name}"?`)) return;
     startTransition(async () => {
       const res = await deleteDesigner(designer.id);
       if (res.error) toast.error(res.error);
@@ -136,15 +136,24 @@ function DeleteButton({ designer }: { designer: ClDesigner }) {
   }
 
   return (
-    <Button
-      size="icon"
-      variant="ghost"
-      className="h-7 w-7 text-muted-foreground hover:text-destructive"
-      onClick={handleDelete}
-      disabled={isPending}
-    >
-      <Trash2 className="h-3.5 w-3.5" />
-    </Button>
+    <ConfirmDialog
+      destructive
+      title={`Remover o projetista "${designer.name}"?`}
+      description="Esta ação não pode ser desfeita."
+      confirmLabel="Remover"
+      onConfirm={handleDelete}
+      trigger={
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-7 w-7 text-muted-foreground hover:text-destructive"
+          disabled={isPending}
+          aria-label={`Remover projetista ${designer.name}`}
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </Button>
+      }
+    />
   );
 }
 
@@ -160,9 +169,7 @@ function DesignerDialog({
   const [name, setName] = useState(designer?.name ?? "");
   const [role, setRole] = useState(designer?.role ?? "");
   const [formation, setFormation] = useState(designer?.formation ?? "");
-  const [photoUrl, setPhotoUrl] = useState<string | null>(
-    designer?.photo_url ?? null,
-  );
+  const [photoUrl, setPhotoUrl] = useState<string | null>(designer?.photo_url ?? null);
   const [uploading, setUploading] = useState(false);
   const [isPending, startTransition] = useTransition();
 
@@ -219,9 +226,7 @@ function DesignerDialog({
     <Dialog open onOpenChange={(v) => !v && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>
-            {designer ? "Editar projetista" : "Novo projetista"}
-          </DialogTitle>
+          <DialogTitle>{designer ? "Editar projetista" : "Novo projetista"}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">

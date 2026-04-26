@@ -120,16 +120,13 @@ export function TemplateCard({
           </Card>
         </Link>
 
-        <div
-          className="absolute right-2 top-2"
-          onClick={(e) => e.preventDefault()}
-        >
+        <div className="absolute right-2 top-2" onClick={(e) => e.preventDefault()}>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 w-7 p-0 opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100 data-[state=open]:opacity-100"
+                className="h-7 w-7 p-0 opacity-0 transition-opacity focus:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100"
                 disabled={isDuplicating}
               >
                 <MoreHorizontal className="h-4 w-4" />
@@ -211,8 +208,8 @@ export function TemplateCard({
           <DialogHeader>
             <DialogTitle>Apagar formulário?</DialogTitle>
             <DialogDescription>
-              Esta ação é permanente e não pode ser desfeita. Todos os campos e
-              seções serão removidos.
+              Esta ação é permanente e não pode ser desfeita. Todos os campos e seções
+              serão removidos.
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-end gap-2 pt-2">

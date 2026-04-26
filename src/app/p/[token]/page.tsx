@@ -1,5 +1,8 @@
 import { notFound } from "next/navigation";
 
+import { BUCKETS, OFFICE_PUBLIC_FIELDS } from "@/lib/constants";
+import { getActivePublicLink } from "@/lib/public-link";
+import { getPublicBucketBaseUrl } from "@/lib/storage";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import type {
   ClDesigner,
@@ -7,55 +10,25 @@ import type {
   ClFormSubmission,
   ClFormTemplate,
   ClOfficeSettings,
-  ClProject,
   ClProjectDesigner,
-  ClPublicLink,
 } from "@/lib/supabase/types";
 
+import { InactiveLinkCard } from "./inactive-link-card";
 import { PublicCover } from "./public-cover";
 
 export const dynamic = "force-dynamic";
-
-const BUCKET = "checklist-images";
 
 export default async function PublicChecklistCoverPage({
   params,
 }: {
   params: { token: string };
 }) {
+  const lookup = await getActivePublicLink(params.token);
+  if (lookup.status === "not-found") notFound();
+  if (lookup.status === "inactive") return <InactiveLinkCard />;
+
+  const { link: typedLink, project } = lookup;
   const supabase = createServiceRoleClient();
-
-  const { data: link } = await supabase
-    .from("cl_public_links")
-    .select("*")
-    .eq("token", params.token)
-    .maybeSingle();
-
-  if (!link) notFound();
-
-  const typedLink = link as ClPublicLink;
-
-  if (!typedLink.is_active) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-muted/30 p-6">
-        <div className="max-w-md space-y-3 rounded-lg border bg-background p-8 text-center shadow-sm">
-          <h1 className="text-lg font-semibold">Link indisponível</h1>
-          <p className="text-sm text-muted-foreground">
-            Este link foi desativado pelo responsável. Entre em contato para
-            obter um novo.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  const { data: project } = await supabase
-    .from("cl_projects")
-    .select("*")
-    .eq("id", typedLink.project_id)
-    .maybeSingle();
-
-  if (!project) notFound();
 
   const [
     { data: disciplines },
@@ -85,8 +58,8 @@ export default async function PublicChecklistCoverPage({
       .order("submitted_at", { ascending: false }),
     supabase
       .from("cl_office_settings")
-      .select("office_name, logo_url, website, instagram, facebook, linkedin, twitter, whatsapp")
-      .eq("user_id", (project as ClProject).created_by)
+      .select(OFFICE_PUBLIC_FIELDS)
+      .eq("user_id", project.created_by)
       .maybeSingle(),
   ]);
 
@@ -99,9 +72,7 @@ export default async function PublicChecklistCoverPage({
       .from("cl_designers")
       .select("*")
       .in("id", designerIds);
-    const byId = new Map(
-      ((designersData ?? []) as ClDesigner[]).map((d) => [d.id, d]),
-    );
+    const byId = new Map(((designersData ?? []) as ClDesigner[]).map((d) => [d.id, d]));
     designers = typedProjectDesigners
       .map((pd) => byId.get(pd.designer_id))
       .filter((d): d is ClDesigner => Boolean(d));
@@ -115,12 +86,11 @@ export default async function PublicChecklistCoverPage({
   const disciplinesInUse = new Set(
     publicTemplates.map((t) => t.discipline_id).filter(Boolean),
   );
-  const relevantDisciplines = ((disciplines ?? []) as ClDiscipline[]).filter(
-    (d) => disciplinesInUse.has(d.id),
+  const relevantDisciplines = ((disciplines ?? []) as ClDiscipline[]).filter((d) =>
+    disciplinesInUse.has(d.id),
   );
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
-  const publicBaseUrl = `${supabaseUrl}/storage/v1/object/public/${BUCKET}`;
+  const publicBaseUrl = getPublicBucketBaseUrl(BUCKETS.CHECKLIST_IMAGES);
 
   const typedSubmissions = (submissions ?? []) as Pick<
     ClFormSubmission,
@@ -133,9 +103,7 @@ export default async function PublicChecklistCoverPage({
     | "status"
   >[];
 
-  const templatesById = new Map(
-    publicTemplates.map((t) => [t.id, t.name] as const),
-  );
+  const templatesById = new Map(publicTemplates.map((t) => [t.id, t.name] as const));
   const history = typedSubmissions.map((s) => ({
     id: s.id,
     template_id: s.template_id,
@@ -160,7 +128,7 @@ export default async function PublicChecklistCoverPage({
   return (
     <PublicCover
       token={typedLink.token}
-      project={project as ClProject}
+      project={project}
       designers={designers}
       disciplines={relevantDisciplines}
       formCount={publicTemplates.length}

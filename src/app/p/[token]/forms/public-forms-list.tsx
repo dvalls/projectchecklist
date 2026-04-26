@@ -3,17 +3,10 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
-import {
-  ArrowLeft,
-  CheckCircle2,
-  ChevronRight,
-  History,
-  Lock,
-  LogOut,
-  Send,
-} from "lucide-react";
+import { CheckCircle2, ChevronRight, History, Lock, LogOut, Send } from "lucide-react";
 import { toast } from "sonner";
 
+import { BackLink } from "@/components/layout/back-link";
 import { getDisciplineIcon } from "@/lib/disciplines/icon";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -42,11 +35,10 @@ interface Props {
   project: ClProject;
   disciplines: ClDiscipline[];
   templates: ClFormTemplate[];
-  submissions: Pick<
-    ClFormSubmission,
-    "id" | "template_id" | "client_email" | "status"
-  >[];
+  submissions: Pick<ClFormSubmission, "id" | "template_id" | "client_email" | "status">[];
   requiredCountByTemplate: Record<string, number>;
+  totalAllByTemplate: Record<string, number>;
+  answeredAllByTemplate: Record<string, number>;
   hasPreviousByTemplate: Record<string, boolean>;
   allowResubmit: boolean;
   officeSettings: PublicOfficeSettings | null;
@@ -59,6 +51,8 @@ export function PublicFormsList({
   templates,
   submissions,
   requiredCountByTemplate,
+  totalAllByTemplate,
+  answeredAllByTemplate,
   hasPreviousByTemplate,
   allowResubmit,
   officeSettings,
@@ -86,10 +80,7 @@ export function PublicFormsList({
     const email = identity.client_email.toLowerCase();
     const set = new Set<string>();
     for (const s of submissions) {
-      if (
-        s.status === "submitted" &&
-        s.client_email?.toLowerCase() === email
-      ) {
+      if (s.status === "submitted" && s.client_email?.toLowerCase() === email) {
         set.add(s.template_id);
       }
     }
@@ -111,17 +102,41 @@ export function PublicFormsList({
   }, []);
 
   const progressByTemplate = useMemo(() => {
-    const map = new Map<string, { done: number; total: number }>();
+    const map = new Map<
+      string,
+      { done: number; total: number; doneAll: number; totalAll: number }
+    >();
     if (!identity) return map;
     for (const t of templates) {
       const total = requiredCountByTemplate[t.id] ?? 0;
+      const serverTotalAll = totalAllByTemplate[t.id] ?? 0;
+      const serverAnsweredAll = Math.min(
+        answeredAllByTemplate[t.id] ?? 0,
+        serverTotalAll,
+      );
       if (completedByTemplate.has(t.id)) {
-        map.set(t.id, { done: total, total });
+        map.set(t.id, {
+          done: total,
+          total,
+          doneAll: serverTotalAll || 1,
+          totalAll: serverTotalAll || 1,
+        });
         continue;
       }
       const draft = readDraftProgress(token, t.id, identity.client_email);
       const done = Math.min(draft?.done ?? 0, total);
-      map.set(t.id, { done, total });
+      const draftTotalAll = draft?.totalAll;
+      const draftDoneAll = draft?.doneAll;
+      const useDraft = typeof draftTotalAll === "number" && draftTotalAll > 0;
+      const totalAll = useDraft ? draftTotalAll! : serverTotalAll;
+      const baseDoneAll = useDraft
+        ? Math.min(draftDoneAll ?? 0, draftTotalAll!)
+        : serverAnsweredAll;
+      const doneAll = Math.min(
+        Math.max(baseDoneAll, useDraft ? 0 : serverAnsweredAll),
+        totalAll,
+      );
+      map.set(t.id, { done, total, doneAll, totalAll });
     }
     return map;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -130,6 +145,8 @@ export function PublicFormsList({
     completedByTemplate,
     identity,
     requiredCountByTemplate,
+    totalAllByTemplate,
+    answeredAllByTemplate,
     token,
     progressTick,
   ]);
@@ -142,8 +159,7 @@ export function PublicFormsList({
     for (const t of templates) {
       const key = t.discipline_id;
       if (!map.has(key)) {
-        const discipline =
-          disciplines.find((d) => d.id === key) ?? null;
+        const discipline = disciplines.find((d) => d.id === key) ?? null;
         map.set(key, { discipline, templates: [] });
       }
       map.get(key)!.templates.push(t);
@@ -158,8 +174,6 @@ export function PublicFormsList({
     return arr;
   }, [templates, disciplines]);
 
-  const total = templates.length;
-  const done = templates.filter((t) => completedByTemplate.has(t.id)).length;
   const pendingTemplates = templates.filter((t) => !completedByTemplate.has(t.id));
   const readyPendingTemplates = pendingTemplates.filter((t) => {
     const progress = progressByTemplate.get(t.id);
@@ -202,8 +216,7 @@ export function PublicFormsList({
       draft: readDraftSubmission(token, t.id, identity.client_email),
     }));
     const missingDraft = drafts.find(
-      ({ template, draft }) =>
-        !draft && (requiredCountByTemplate[template.id] ?? 0) > 0,
+      ({ template, draft }) => !draft && (requiredCountByTemplate[template.id] ?? 0) > 0,
     );
     if (missingDraft) {
       toast.error(
@@ -249,18 +262,10 @@ export function PublicFormsList({
     <div className="flex min-h-screen flex-col bg-muted/30">
       <div className="border-b bg-background">
         <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-3 px-4 py-4">
-          <Link
-            href={`/p/${token}`}
-            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Voltar à capa
-          </Link>
+          <BackLink href={`/p/${token}`}>Voltar à capa</BackLink>
           <div className="flex min-w-0 items-center gap-3">
             <div className="hidden text-right text-xs text-muted-foreground sm:block">
-              <div className="font-medium text-foreground">
-                {identity.client_name}
-              </div>
+              <div className="font-medium text-foreground">{identity.client_name}</div>
               <div className="truncate">{identity.client_email}</div>
             </div>
             <Button variant="ghost" size="sm" onClick={handleLogout}>
@@ -279,38 +284,7 @@ export function PublicFormsList({
           <p className="mt-1 text-sm text-muted-foreground">
             Escolha os formulários abaixo e preencha na ordem que preferir.
           </p>
-          {total > 0 ? (
-            <p className="mt-3 text-xs text-muted-foreground">
-              Progresso:{" "}
-              <strong className="text-foreground">
-                {done}/{total}
-              </strong>{" "}
-              formulários concluídos
-            </p>
-          ) : null}
         </div>
-
-        {templates.length > 0 ? (
-          <Card>
-            <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-sm font-medium">Envio geral</p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Preencha os formulários e use este botão para enviar tudo de
-                  uma vez.
-                </p>
-              </div>
-              <Button
-                onClick={handleSubmitAll}
-                disabled={!canSubmitAll || isSubmitting}
-                className="sm:self-center"
-              >
-                <Send className="mr-2 h-4 w-4" />
-                {isSubmitting ? "Enviando..." : "Enviar todos os formulários"}
-              </Button>
-            </CardContent>
-          </Card>
-        ) : null}
 
         {templates.length === 0 ? (
           <Card>
@@ -325,66 +299,57 @@ export function PublicFormsList({
             {groups.map(({ discipline, templates: groupTemplates }) => {
               const Icon = getDisciplineIcon(discipline?.name);
               return (
-              <section key={discipline?.id ?? "no-discipline"}>
-                <div className="mb-2 flex items-center gap-2">
-                  <Icon
-                    className="h-4 w-4"
-                    style={
-                      discipline ? { color: discipline.color } : undefined
-                    }
-                    aria-hidden
-                  />
-                  <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                    {discipline?.name ?? "Sem disciplina"}
-                  </h2>
-                </div>
-                <div className="grid gap-2 sm:grid-cols-[repeat(auto-fit,minmax(min(100%,27rem),1fr))]">
-                  {groupTemplates.map((t) => {
-                    const completed = completedByTemplate.has(t.id);
-                    const progress = progressByTemplate.get(t.id) ?? {
-                      done: 0,
-                      total: requiredCountByTemplate[t.id] ?? 0,
-                    };
-                    const hasRequired = progress.total > 0;
-                    const isComplete =
-                      completed || (hasRequired && progress.done >= progress.total);
-                    const hasPrevious = Boolean(
-                      hasPreviousByTemplate[t.id],
-                    );
-                    return (
-                      <Link
-                        key={t.id}
-                        href={`/p/${token}/forms/${t.id}`}
-                        className="block"
-                      >
-                        <Card className="h-full transition-colors hover:border-primary/40">
-                          <CardContent className="flex items-start justify-between gap-3 p-4 sm:items-center">
-                            <div className="min-w-0 flex-1">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <span className="min-w-0 break-words font-medium">
-                                  {t.name}
-                                </span>
-                                {completed ? (
-                                  <Badge
-                                    variant="outline"
-                                    className="border-emerald-500 text-emerald-600"
-                                  >
-                                    <CheckCircle2 className="mr-1 h-3 w-3" />
-                                    Concluído
-                                  </Badge>
-                                ) : null}
-                              </div>
-                              {t.description ? (
-                                <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
-                                  {t.description}
-                                </p>
-                              ) : null}
-                              {hasRequired || hasPrevious ? (
-                                <div className="mt-2 flex flex-wrap items-center gap-2">
-                                  {hasRequired ? (
+                <section key={discipline?.id ?? "no-discipline"}>
+                  <div className="mb-2 flex items-center gap-2">
+                    <Icon
+                      className="h-4 w-4"
+                      style={discipline ? { color: discipline.color } : undefined}
+                      aria-hidden
+                    />
+                    <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                      {discipline?.name ?? "Sem disciplina"}
+                    </h2>
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-[repeat(auto-fit,minmax(min(100%,27rem),1fr))]">
+                    {groupTemplates.map((t) => {
+                      const completed = completedByTemplate.has(t.id);
+                      const progress = progressByTemplate.get(t.id) ?? {
+                        done: 0,
+                        total: requiredCountByTemplate[t.id] ?? 0,
+                        doneAll: 0,
+                        totalAll: 0,
+                      };
+                      const hasRequired = progress.total > 0;
+                      const isComplete =
+                        completed || (hasRequired && progress.done >= progress.total);
+                      const hasPrevious = Boolean(hasPreviousByTemplate[t.id]);
+                      const safeDone = Math.min(progress.done, progress.total);
+                      const safeDoneAll = Math.min(progress.doneAll, progress.totalAll);
+                      const remainingAll = progress.totalAll - safeDoneAll;
+                      const progressValue =
+                        progress.totalAll > 0
+                          ? Math.round((safeDoneAll / progress.totalAll) * 100)
+                          : completed
+                            ? 100
+                            : 0;
+                      const showProgressBar = progress.totalAll > 0 || completed;
+                      return (
+                        <Link
+                          key={t.id}
+                          href={`/p/${token}/forms/${t.id}`}
+                          className="block"
+                        >
+                          <Card className="h-full transition-colors hover:border-primary/40">
+                            <CardContent className="flex items-start justify-between gap-3 p-4 sm:items-center">
+                              <div className="min-w-0 flex-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className="min-w-0 break-words font-medium">
+                                    {t.name}
+                                  </span>
+                                  {completed ? (
                                     <Badge
                                       variant="outline"
-                                      className="border-emerald-500 text-emerald-600"
+                                      className="border-success text-success-foreground"
                                     >
                                       <CheckCircle2 className="mr-1 h-3 w-3" />
                                       Concluído
@@ -403,10 +368,10 @@ export function PublicFormsList({
                                         variant="outline"
                                         className={
                                           isComplete
-                                            ? "border-emerald-500 text-emerald-600"
+                                            ? "border-success text-success-foreground"
                                             : safeDone > 0
-                                            ? "border-amber-500 text-amber-600"
-                                            : "text-muted-foreground"
+                                              ? "border-warning text-warning-foreground"
+                                              : "text-muted-foreground"
                                         }
                                       >
                                         {safeDone}/{progress.total} obrigatórios
@@ -416,7 +381,7 @@ export function PublicFormsList({
                                       allowResubmit ? (
                                         <Badge
                                           variant="outline"
-                                          className="border-amber-500 text-amber-600"
+                                          className="border-warning text-warning-foreground"
                                         >
                                           <History className="mr-1 h-3 w-3" />
                                           Histórico disponível
@@ -436,27 +401,23 @@ export function PublicFormsList({
                               </div>
                               <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
                             </CardContent>
-                            {hasRequired ? (
+                            {showProgressBar ? (
                               <CardFooter className="flex-col items-stretch gap-2 border-t bg-muted/20 p-3">
                                 <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
                                   <span>
                                     {formatQuestionCount(
-                                      safeDone,
+                                      safeDoneAll,
                                       "respondida",
                                       "respondidas",
                                     )}
                                   </span>
                                   <span>
-                                    {formatQuestionCount(
-                                      remaining,
-                                      "falta",
-                                      "faltam",
-                                    )}
+                                    {formatQuestionCount(remainingAll, "falta", "faltam")}
                                   </span>
                                 </div>
                                 <Progress
                                   value={progressValue}
-                                  aria-label={`${safeDone} de ${progress.total} perguntas obrigatórias respondidas`}
+                                  aria-label={`${safeDoneAll} de ${progress.totalAll} perguntas respondidas`}
                                   className="h-1.5"
                                 />
                               </CardFooter>
@@ -471,6 +432,27 @@ export function PublicFormsList({
             })}
           </div>
         )}
+
+        {templates.length > 0 ? (
+          <Card>
+            <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-medium">Envio geral</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Preencha os formulários e use este botão para enviar tudo de uma vez.
+                </p>
+              </div>
+              <Button
+                onClick={handleSubmitAll}
+                disabled={!canSubmitAll || isSubmitting}
+                className="sm:self-center"
+              >
+                <Send className="mr-2 h-4 w-4" />
+                {isSubmitting ? "Enviando..." : "Enviar todos os formulários"}
+              </Button>
+            </CardContent>
+          </Card>
+        ) : null}
       </div>
 
       <PublicFooter officeSettings={officeSettings} />

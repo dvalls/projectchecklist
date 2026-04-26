@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 import type { ClFormTemplate, ClPublicLink } from "@/lib/supabase/types";
 
@@ -40,15 +41,10 @@ interface Props {
   templates: ClFormTemplate[];
 }
 
-export function ProjectPublicLinkDialog({
-  projectId,
-  initialLinks,
-  templates,
-}: Props) {
+export function ProjectPublicLinkDialog({ projectId, initialLinks, templates }: Props) {
   const [open, setOpen] = useState(false);
   const [links, setLinks] = useState<ClPublicLink[]>(initialLinks);
-  const [templatesState, setTemplatesState] =
-    useState<ClFormTemplate[]>(templates);
+  const [templatesState, setTemplatesState] = useState<ClFormTemplate[]>(templates);
   const [isCreating, startCreating] = useTransition();
   const [origin, setOrigin] = useState<string>("");
 
@@ -65,14 +61,14 @@ export function ProjectPublicLinkDialog({
   function handleCreate() {
     startCreating(async () => {
       const res = await createProjectPublicLink(projectId);
-      if (res.error || !res.link) {
+      if (res.error || !res.data) {
         toast.error(res.error ?? "Erro ao criar link.");
         return;
       }
       setLinks((prev) => [
         {
-          id: res.link!.id,
-          token: res.link!.token,
+          id: res.data.id,
+          token: res.data.token,
           template_id: null,
           project_id: projectId,
           created_by: "",
@@ -103,9 +99,7 @@ export function ProjectPublicLinkDialog({
     if (res.error) {
       toast.error(res.error);
       setLinks((prev) =>
-        prev.map((l) =>
-          l.id === link.id ? { ...l, is_active: previous } : l,
-        ),
+        prev.map((l) => (l.id === link.id ? { ...l, is_active: previous } : l)),
       );
     } else {
       toast.success(isActive ? "Link ativado." : "Link desativado.");
@@ -113,7 +107,6 @@ export function ProjectPublicLinkDialog({
   }
 
   async function handleDelete(link: ClPublicLink) {
-    if (!confirm("Remover este link público?")) return;
     const res = await deleteProjectLink(link.id);
     if (res.error) {
       toast.error(res.error);
@@ -133,9 +126,7 @@ export function ProjectPublicLinkDialog({
       toast.error(res.error);
       setTemplatesState((prev) =>
         prev.map((t) =>
-          t.id === templateId
-            ? { ...t, is_public: previous ?? true }
-            : t,
+          t.id === templateId ? { ...t, is_public: previous ?? true } : t,
         ),
       );
     }
@@ -153,8 +144,7 @@ export function ProjectPublicLinkDialog({
         <DialogHeader>
           <DialogTitle>Link público do projeto</DialogTitle>
           <DialogDescription>
-            Gere um link para o cliente preencher todos os checklists deste
-            projeto.
+            Gere um link para o cliente preencher todos os checklists deste projeto.
           </DialogDescription>
         </DialogHeader>
 
@@ -171,9 +161,7 @@ export function ProjectPublicLinkDialog({
           </div>
 
           {links.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Nenhum link público gerado.
-            </p>
+            <p className="text-sm text-muted-foreground">Nenhum link público gerado.</p>
           ) : (
             <div className="space-y-3">
               {links.map((link) => {
@@ -199,11 +187,7 @@ export function ProjectPublicLinkDialog({
                         Copiar
                       </Button>
                       <Button variant="outline" size="sm" asChild>
-                        <a
-                          href={url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
+                        <a href={url} target="_blank" rel="noopener noreferrer">
                           <ExternalLink className="mr-1 h-3.5 w-3.5" />
                           Abrir
                         </a>
@@ -217,14 +201,23 @@ export function ProjectPublicLinkDialog({
                           {link.is_active ? "Ativo" : "Inativo"}
                         </span>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDelete(link)}
-                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
+                      <ConfirmDialog
+                        destructive
+                        title="Remover este link público?"
+                        description="Os clientes que ainda tiverem este link não conseguirão mais acessar."
+                        confirmLabel="Remover"
+                        onConfirm={() => handleDelete(link)}
+                        trigger={
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                            aria-label="Remover link público"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        }
+                      />
                     </div>
                   </div>
                 );
@@ -233,9 +226,7 @@ export function ProjectPublicLinkDialog({
           )}
 
           <div>
-            <h3 className="mb-2 text-sm font-semibold">
-              Formulários visíveis no link
-            </h3>
+            <h3 className="mb-2 text-sm font-semibold">Formulários visíveis no link</h3>
             <p className="mb-3 text-xs text-muted-foreground">
               Desmarque para ocultar um formulário do link público.
             </p>

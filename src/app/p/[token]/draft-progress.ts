@@ -3,6 +3,8 @@
 export interface DraftProgress {
   done: number;
   total: number;
+  doneAll?: number;
+  totalAll?: number;
   updatedAt: number;
 }
 
@@ -37,20 +39,17 @@ export function readDraftProgress(
 ): DraftProgress | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = window.localStorage.getItem(
-      storageKey(token, templateId, email),
-    );
+    const raw = window.localStorage.getItem(storageKey(token, templateId, email));
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<DraftProgress>;
-    if (
-      typeof parsed.done !== "number" ||
-      typeof parsed.total !== "number"
-    ) {
+    if (typeof parsed.done !== "number" || typeof parsed.total !== "number") {
       return null;
     }
     return {
       done: parsed.done,
       total: parsed.total,
+      doneAll: typeof parsed.doneAll === "number" ? parsed.doneAll : undefined,
+      totalAll: typeof parsed.totalAll === "number" ? parsed.totalAll : undefined,
       updatedAt: parsed.updatedAt ?? 0,
     };
   } catch {
@@ -71,9 +70,7 @@ export function readDraftSubmission(
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<DraftSubmission>;
     const values = Array.isArray(parsed.values) ? parsed.values : [];
-    const matrixValues = Array.isArray(parsed.matrix_values)
-      ? parsed.matrix_values
-      : [];
+    const matrixValues = Array.isArray(parsed.matrix_values) ? parsed.matrix_values : [];
     return {
       values: values
         .filter((v) => typeof v.field_id === "string")
@@ -83,10 +80,7 @@ export function readDraftSubmission(
           image_url: typeof v.image_url === "string" ? v.image_url : null,
         })),
       matrix_values: matrixValues
-        .filter(
-          (v) =>
-            typeof v.field_id === "string" && typeof v.env_key === "string",
-        )
+        .filter((v) => typeof v.field_id === "string" && typeof v.env_key === "string")
         .map((v) => ({
           field_id: v.field_id,
           env_key: v.env_key,
@@ -152,11 +146,7 @@ export function writeDraftSubmission(
   }
 }
 
-export function clearDraftProgress(
-  token: string,
-  templateId: string,
-  email: string,
-) {
+export function clearDraftProgress(token: string, templateId: string, email: string) {
   if (typeof window === "undefined") return;
   try {
     window.localStorage.removeItem(storageKey(token, templateId, email));
@@ -170,11 +160,7 @@ export function clearDraftProgress(
   }
 }
 
-export function clearDraftSubmission(
-  token: string,
-  templateId: string,
-  email: string,
-) {
+export function clearDraftSubmission(token: string, templateId: string, email: string) {
   if (typeof window === "undefined") return;
   try {
     window.localStorage.removeItem(submissionStorageKey(token, templateId, email));

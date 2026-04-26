@@ -13,12 +13,8 @@ import {
 
 import { ImageDisplayField } from "@/components/form-builder/field-preview";
 import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,8 +32,17 @@ import type {
   ClFormSection,
   ClFormTemplate,
   FieldOptions,
-  VisibleWhen,
 } from "@/lib/supabase/types";
+
+import type { CheckboxGroupValue, FieldValue } from "@/lib/forms/types";
+import {
+  evaluateVisible,
+  isDisplayOnly,
+  isFieldAnswered,
+  makeFieldKey,
+  parseCheckboxGroup,
+  serializeCheckboxGroup,
+} from "@/lib/forms/utils";
 
 import type {
   PreviousMatrixValuesMap,
@@ -55,92 +60,7 @@ interface Props {
   allowResubmit?: boolean;
 }
 
-interface CheckboxGroupValue {
-  selected: string[];
-  other?: string;
-}
-
-type FieldValue = {
-  value: string | null;
-};
-
-function isDisplayOnly(type: ClFormField["type"]) {
-  return type === "info" || type === "image";
-}
-
-function makeFieldKey(fieldId: string, env?: string) {
-  return env ? `${fieldId}::${env}` : fieldId;
-}
-
-function parseCheckboxGroup(value: string | null): CheckboxGroupValue {
-  if (!value) return { selected: [] };
-  try {
-    const parsed = JSON.parse(value);
-    if (parsed && Array.isArray(parsed.selected)) {
-      return {
-        selected: parsed.selected,
-        other: typeof parsed.other === "string" ? parsed.other : undefined,
-      };
-    }
-  } catch {
-    // fallthrough
-  }
-  return { selected: [] };
-}
-
-function serializeCheckboxGroup(v: CheckboxGroupValue): string | null {
-  const hasOther = v.other !== undefined;
-  if (v.selected.length === 0 && !hasOther) return null;
-  return JSON.stringify({
-    selected: v.selected,
-    ...(hasOther ? { other: v.other ?? "" } : {}),
-  });
-}
-
-function evaluateVisible(
-  condition: VisibleWhen | null,
-  values: Record<string, FieldValue>,
-  env?: string,
-): boolean {
-  if (!condition) return true;
-  const targetKey = makeFieldKey(condition.field_id, env);
-  const fieldVal = values[targetKey];
-  if (!fieldVal) return false;
-  const raw = fieldVal.value;
-
-  if (condition.op === "truthy") {
-    if (raw === null || raw === undefined || raw === "") return false;
-    if (raw === "false") return false;
-    try {
-      const parsed = JSON.parse(raw);
-      if (parsed && Array.isArray(parsed.selected)) {
-        return parsed.selected.length > 0 || Boolean(parsed.other);
-      }
-    } catch {
-      // not JSON
-    }
-    return true;
-  }
-
-  if (condition.op === "eq") {
-    return raw === condition.value;
-  }
-
-  if (condition.op === "includes") {
-    if (!condition.value) return false;
-    try {
-      const parsed = JSON.parse(raw ?? "");
-      if (parsed && Array.isArray(parsed.selected)) {
-        return parsed.selected.includes(condition.value);
-      }
-    } catch {
-      // not JSON
-    }
-    return raw === condition.value;
-  }
-
-  return true;
-}
+type FieldFilter = "all" | "unfilled" | "filled";
 
 export function PublicFormsFlow({
   token,
@@ -252,24 +172,14 @@ function PublicSubmissionForm({
     previousByMatrix,
   ]);
 
-  const [values, setValues] = useState<Record<string, FieldValue>>(
-    initialValues,
-  );
+  const [values, setValues] = useState<Record<string, FieldValue>>(initialValues);
+  const [filter, setFilter] = useState<FieldFilter>("all");
 
   function setFieldValue(key: string, patch: Partial<FieldValue>) {
     setValues((prev) => ({
       ...prev,
       [key]: { ...prev[key], ...patch },
     }));
-  }
-
-  function isFieldAnswered(field: ClFormField, v: FieldValue | undefined) {
-    if (field.type === "checkbox") return v?.value === "true";
-    if (field.type === "checkbox_group") {
-      const parsed = parseCheckboxGroup(v?.value ?? null);
-      return parsed.selected.length > 0 || Boolean(parsed.other);
-    }
-    return Boolean(v?.value && v.value.trim() !== "");
   }
 
   const hasAnyPrevious = useMemo(() => {
@@ -306,6 +216,36 @@ function PublicSubmissionForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fields, values, envScope]);
 
+  const allProgress = useMemo(() => {
+    let totalAll = 0;
+    let doneAll = 0;
+    for (const env of envScope) {
+      for (const f of fields) {
+        if (isDisplayOnly(f.type)) continue;
+        const visible = evaluateVisible(f.visible_when, values, env);
+        if (!visible) continue;
+        totalAll += 1;
+        const key = makeFieldKey(f.id, env);
+        const prev = env ? previousByMatrix[f.id]?.[env] : previousByField[f.id];
+        const locked = Boolean(prev) && !allowResubmit;
+        if (locked || isFieldAnswered(f, values[key])) {
+          doneAll += 1;
+        }
+      }
+    }
+    return { doneAll, totalAll };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fields, values, envScope, previousByField, previousByMatrix, allowResubmit]);
+
+  const filterCounts = useMemo(
+    () => ({
+      all: allProgress.totalAll,
+      filled: allProgress.doneAll,
+      unfilled: allProgress.totalAll - allProgress.doneAll,
+    }),
+    [allProgress],
+  );
+
   const draftSubmission = useMemo(() => {
     const inputs: DraftSubmissionValue[] = [];
     const matrixInputs: DraftSubmissionMatrixValue[] = [];
@@ -321,11 +261,11 @@ function PublicSubmissionForm({
             f.type === "checkbox"
               ? v?.value !== "true"
               : f.type === "checkbox_group"
-              ? (() => {
-                  const parsed = parseCheckboxGroup(v?.value ?? null);
-                  return parsed.selected.length === 0 && !parsed.other;
-                })()
-              : !v?.value;
+                ? (() => {
+                    const parsed = parseCheckboxGroup(v?.value ?? null);
+                    return parsed.selected.length === 0 && !parsed.other;
+                  })()
+                : !v?.value;
           if (missing) {
             continue;
           }
@@ -337,8 +277,8 @@ function PublicSubmissionForm({
         const locked = Boolean(prev) && !allowResubmit;
         const payload = {
           field_id: f.id,
-          value: locked ? prev?.value ?? null : v?.value ?? null,
-          image_url: locked ? prev?.image_url ?? null : null,
+          value: locked ? (prev?.value ?? null) : (v?.value ?? null),
+          image_url: locked ? (prev?.image_url ?? null) : null,
         };
 
         if (env) {
@@ -356,9 +296,11 @@ function PublicSubmissionForm({
     writeDraftProgress(token, template.id, clientEmail, {
       done: progress.done,
       total: progress.total,
+      doneAll: allProgress.doneAll,
+      totalAll: allProgress.totalAll,
     });
     writeDraftSubmission(token, template.id, clientEmail, draftSubmission);
-  }, [progress, draftSubmission, token, template.id, clientEmail]);
+  }, [progress, allProgress, draftSubmission, token, template.id, clientEmail]);
 
   return (
     <Card className="overflow-hidden">
@@ -378,7 +320,7 @@ function PublicSubmissionForm({
             <strong
               className={
                 progress.done >= progress.total
-                  ? "text-emerald-600"
+                  ? "text-success-foreground"
                   : "text-foreground"
               }
             >
@@ -387,13 +329,13 @@ function PublicSubmissionForm({
           </p>
         ) : null}
       </CardHeader>
-      <CardContent className="space-y-8 p-4 pt-0 sm:p-6 sm:pt-0">
+      <CardContent className="space-y-6 p-4 pt-0 sm:p-6 sm:pt-0">
         {hasAnyPrevious ? (
           <div
             className={
               "flex items-start gap-2 rounded-md border p-3 text-xs " +
               (allowResubmit
-                ? "border-amber-300 bg-amber-50 text-amber-800"
+                ? "border-warning bg-warning/30 text-warning-foreground"
                 : "border-muted-foreground/20 bg-muted/40 text-muted-foreground")
             }
           >
@@ -414,37 +356,40 @@ function PublicSubmissionForm({
           <p className="text-sm text-muted-foreground">
             Este formulário não possui campos.
           </p>
-        ) : isMatrix ? (
-          <MatrixRenderer
-            sections={sections}
-            fields={fields}
-            environments={environments}
-            values={values}
-            onChange={setFieldValue}
-            previousByMatrix={previousByMatrix}
-            allowResubmit={allowResubmit}
-          />
         ) : (
-          <StandardRenderer
-            sections={sections}
-            fields={fields}
-            values={values}
-            onChange={setFieldValue}
-            previousByField={previousByField}
-            allowResubmit={allowResubmit}
-          />
+          <>
+            <FilterBar filter={filter} counts={filterCounts} onChange={setFilter} />
+            {isMatrix ? (
+              <MatrixRenderer
+                sections={sections}
+                fields={fields}
+                environments={environments}
+                values={values}
+                onChange={setFieldValue}
+                previousByMatrix={previousByMatrix}
+                allowResubmit={allowResubmit}
+                filter={filter}
+              />
+            ) : (
+              <StandardRenderer
+                sections={sections}
+                fields={fields}
+                values={values}
+                onChange={setFieldValue}
+                previousByField={previousByField}
+                allowResubmit={allowResubmit}
+                filter={filter}
+              />
+            )}
+            {filter !== "all" && filterCounts[filter] === 0 ? (
+              <p className="rounded-md border border-dashed bg-muted/20 p-4 text-center text-sm text-muted-foreground">
+                {filter === "filled"
+                  ? "Nenhum item preenchido até o momento."
+                  : "Todos os itens estão preenchidos."}
+              </p>
+            ) : null}
+          </>
         )}
-
-        <div className="flex flex-col gap-2 border-t pt-4 sm:flex-row sm:justify-end">
-          <Button
-            onClick={handleSubmit}
-            disabled={isSubmitting}
-            className="w-full sm:w-auto"
-          >
-            <Send className="mr-2 h-4 w-4" />
-            {isSubmitting ? "Enviando..." : "Enviar"}
-          </Button>
-        </div>
       </CardContent>
     </Card>
   );
@@ -457,6 +402,7 @@ function StandardRenderer({
   onChange,
   previousByField,
   allowResubmit,
+  filter,
 }: {
   sections: ClFormSection[];
   fields: ClFormField[];
@@ -464,6 +410,7 @@ function StandardRenderer({
   onChange: (key: string, patch: Partial<FieldValue>) => void;
   previousByField: PreviousValuesMap;
   allowResubmit: boolean;
+  filter: FieldFilter;
 }) {
   const sectionList =
     sections.length > 0
@@ -488,6 +435,17 @@ function StandardRenderer({
             ? fields.filter((f) => f.section_id === section.id)
             : fields;
         if (sectionFields.length === 0) return null;
+        const filteredFields = sectionFields.filter((field) => {
+          const visible = evaluateVisible(field.visible_when, values);
+          if (!visible) return false;
+          if (filter === "all") return true;
+          if (isDisplayOnly(field.type)) return false;
+          const key = makeFieldKey(field.id);
+          const locked = Boolean(previousByField[field.id]) && !allowResubmit;
+          const answered = locked || isFieldAnswered(field, values[key]);
+          return filter === "filled" ? answered : !answered;
+        });
+        if (filteredFields.length === 0) return null;
         return (
           <section key={section.id} className="space-y-3">
             {section.title ? (
@@ -510,10 +468,8 @@ function StandardRenderer({
                 } as React.CSSProperties
               }
             >
-              {sectionFields.map((field) => {
+              {filteredFields.map((field) => {
                 const key = makeFieldKey(field.id);
-                const visible = evaluateVisible(field.visible_when, values);
-                if (!visible) return null;
                 const hasPrevious = Boolean(previousByField[field.id]);
                 const locked = hasPrevious && !allowResubmit;
                 return (
@@ -555,6 +511,7 @@ function MatrixRenderer({
   onChange,
   previousByMatrix,
   allowResubmit,
+  filter,
 }: {
   sections: ClFormSection[];
   fields: ClFormField[];
@@ -563,13 +520,34 @@ function MatrixRenderer({
   onChange: (key: string, patch: Partial<FieldValue>) => void;
   previousByMatrix: PreviousMatrixValuesMap;
   allowResubmit: boolean;
+  filter: FieldFilter;
 }) {
   const rows = fields.filter((f) => !isDisplayOnly(f.type));
+
+  function rowMatchesFilter(field: ClFormField): boolean {
+    if (filter === "all") return true;
+    let anyVisible = false;
+    let anyFilled = false;
+    let anyUnfilled = false;
+    for (const env of environments) {
+      const visible = evaluateVisible(field.visible_when, values, env);
+      if (!visible) continue;
+      anyVisible = true;
+      const key = makeFieldKey(field.id, env);
+      const locked = Boolean(previousByMatrix[field.id]?.[env]) && !allowResubmit;
+      if (locked || isFieldAnswered(field, values[key])) anyFilled = true;
+      else anyUnfilled = true;
+    }
+    if (!anyVisible) return false;
+    return filter === "filled" ? !anyUnfilled : anyUnfilled;
+  }
 
   return (
     <div className="space-y-6">
       {sections.map((section) => {
-        const secRows = rows.filter((f) => f.section_id === section.id);
+        const secRows = rows
+          .filter((f) => f.section_id === section.id)
+          .filter(rowMatchesFilter);
         if (secRows.length === 0) return null;
         return (
           <div key={section.id} className="space-y-2">
@@ -605,9 +583,7 @@ function MatrixRenderer({
                         <div className="font-medium">
                           {field.label}
                           {field.required ? (
-                            <span className="ml-1 text-destructive-foreground">
-                              *
-                            </span>
+                            <span className="ml-1 text-destructive-foreground">*</span>
                           ) : null}
                         </div>
                         {field.help_text ? (
@@ -618,14 +594,8 @@ function MatrixRenderer({
                       </td>
                       {environments.map((env) => {
                         const key = makeFieldKey(field.id, env);
-                        const visible = evaluateVisible(
-                          field.visible_when,
-                          values,
-                          env,
-                        );
-                        const hasPrevious = Boolean(
-                          previousByMatrix[field.id]?.[env],
-                        );
+                        const visible = evaluateVisible(field.visible_when, values, env);
+                        const hasPrevious = Boolean(previousByMatrix[field.id]?.[env]);
                         const locked = hasPrevious && !allowResubmit;
                         return (
                           <td
@@ -645,9 +615,7 @@ function MatrixRenderer({
                                 onChange={(patch) => onChange(key, patch)}
                               />
                             ) : (
-                              <span className="text-xs text-muted-foreground">
-                                —
-                              </span>
+                              <span className="text-xs text-muted-foreground">—</span>
                             )}
                           </td>
                         );
@@ -664,12 +632,60 @@ function MatrixRenderer({
   );
 }
 
+function FilterBar({
+  filter,
+  counts,
+  onChange,
+}: {
+  filter: FieldFilter;
+  counts: { all: number; filled: number; unfilled: number };
+  onChange: (next: FieldFilter) => void;
+}) {
+  const options: Array<{ key: FieldFilter; label: string }> = [
+    { key: "all", label: "Todos" },
+    { key: "unfilled", label: "Não preenchidos" },
+    { key: "filled", label: "Preenchidos" },
+  ];
+
+  return (
+    <div className="sticky top-0 z-20 -mx-4 flex flex-wrap items-center gap-2 border-b bg-background/95 px-4 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:mx-0 sm:rounded-md sm:border sm:px-3">
+      <span className="text-xs font-medium text-muted-foreground">Filtrar:</span>
+      <div className="flex flex-wrap gap-1.5">
+        {options.map((opt) => {
+          const active = filter === opt.key;
+          return (
+            <Button
+              key={opt.key}
+              type="button"
+              size="sm"
+              variant={active ? "default" : "outline"}
+              onClick={() => onChange(opt.key)}
+              className="h-8"
+            >
+              <span>{opt.label}</span>
+              <span
+                className={
+                  "ml-2 inline-flex min-w-[1.25rem] items-center justify-center rounded-full px-1.5 text-[10px] font-semibold " +
+                  (active
+                    ? "bg-primary-foreground/20 text-primary-foreground"
+                    : "bg-muted text-muted-foreground")
+                }
+              >
+                {counts[opt.key]}
+              </span>
+            </Button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function InfoFieldView({ field }: { field: ClFormField }) {
   const opts = (field.options as Exclude<FieldOptions, null>) ?? {};
   const content = opts.content ?? field.help_text ?? "";
   const lines = content.split("\n").filter((l) => l.trim().length > 0);
-  const isAllBullets =
-    lines.length > 0 && lines.every((l) => l.trim().startsWith("- "));
+  const isAllBullets = lines.length > 0 && lines.every((l) => l.trim().startsWith("- "));
 
   return (
     <div className="rounded-md border border-dashed bg-muted/20 p-3">
@@ -726,11 +742,9 @@ function FieldInput({
     );
   }
 
-  const showLabel = !compact;
+  const showLabel = !compact && field.type !== "checkbox";
   const groupValue =
-    field.type === "checkbox_group"
-      ? parseCheckboxGroup(value?.value ?? null)
-      : null;
+    field.type === "checkbox_group" ? parseCheckboxGroup(value?.value ?? null) : null;
 
   function updateGroup(next: CheckboxGroupValue) {
     if (locked) return;
@@ -743,20 +757,15 @@ function FieldInput({
       className={
         locked
           ? "border-muted-foreground/30 text-muted-foreground"
-          : "border-amber-500 text-amber-600"
+          : "border-warning text-warning-foreground"
       }
     >
-      {locked ? (
-        <Lock className="mr-1 h-3 w-3" />
-      ) : (
-        <History className="mr-1 h-3 w-3" />
-      )}
+      {locked ? <Lock className="mr-1 h-3 w-3" /> : <History className="mr-1 h-3 w-3" />}
       {locked ? "Já respondido" : "Preenchido anteriormente"}
     </Badge>
   ) : null;
 
-  const containerClassName =
-    "space-y-1.5" + (locked ? " opacity-90" : "");
+  const containerClassName = "space-y-1.5" + (locked ? " opacity-90" : "");
 
   return (
     <div className={containerClassName}>
@@ -770,13 +779,11 @@ function FieldInput({
           </Label>
           {previousBadge}
         </div>
-      ) : previousBadge ? (
+      ) : previousBadge && field.type !== "checkbox" ? (
         <div className="flex">{previousBadge}</div>
       ) : null}
       {showLabel && field.help_text ? (
-        <p className="text-xs italic text-muted-foreground">
-          {field.help_text}
-        </p>
+        <p className="text-xs italic text-muted-foreground">{field.help_text}</p>
       ) : null}
 
       {field.type === "text" ? (
@@ -819,15 +826,31 @@ function FieldInput({
       ) : null}
 
       {field.type === "checkbox" ? (
-        <div className="flex items-center gap-2 pt-1">
-          <Checkbox
-            checked={value?.value === "true"}
-            disabled={locked}
-            onCheckedChange={(checked) =>
-              onChange({ value: checked ? "true" : "false" })
+        <div className="space-y-1 pt-1">
+          <label
+            className={
+              "flex flex-wrap items-center gap-2 " +
+              (locked ? "cursor-not-allowed" : "cursor-pointer")
             }
-          />
-          <span className="text-sm">{compact ? "Sim" : field.label}</span>
+          >
+            <Checkbox
+              checked={value?.value === "true"}
+              disabled={locked}
+              onCheckedChange={(checked) =>
+                onChange({ value: checked ? "true" : "false" })
+              }
+            />
+            <span className="text-sm">
+              {compact ? "Sim" : field.label}
+              {!compact && field.required ? (
+                <span className="ml-1 text-destructive-foreground">*</span>
+              ) : null}
+            </span>
+            {previousBadge}
+          </label>
+          {!compact && field.help_text ? (
+            <p className="pl-6 text-xs italic text-muted-foreground">{field.help_text}</p>
+          ) : null}
         </div>
       ) : null}
 
@@ -865,7 +888,7 @@ function FieldInput({
                 onCheckedChange={(v) =>
                   updateGroup({
                     ...groupValue,
-                    other: v ? groupValue.other ?? "" : undefined,
+                    other: v ? (groupValue.other ?? "") : undefined,
                   })
                 }
               />
@@ -875,9 +898,7 @@ function FieldInput({
                 value={groupValue.other ?? ""}
                 disabled={locked || groupValue.other === undefined}
                 readOnly={locked}
-                onChange={(e) =>
-                  updateGroup({ ...groupValue, other: e.target.value })
-                }
+                onChange={(e) => updateGroup({ ...groupValue, other: e.target.value })}
               />
             </div>
           ) : null}
@@ -925,7 +946,6 @@ function FieldInput({
           ))}
         </div>
       ) : null}
-
     </div>
   );
 }

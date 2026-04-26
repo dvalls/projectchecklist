@@ -5,10 +5,7 @@ import { Send } from "lucide-react";
 import { toast } from "sonner";
 
 import { ImageDisplayField } from "@/components/form-builder/field-preview";
-import {
-  ChoiceLabel,
-  RecommendedBadge,
-} from "@/components/form-builder/shared";
+import { ChoiceLabel, RecommendedBadge } from "@/components/form-builder/shared";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -28,14 +25,23 @@ import type {
   ClFormSection,
   ClFormTemplate,
   FieldOptions,
-  VisibleWhen,
 } from "@/lib/supabase/types";
 
 import {
-  createSubmission,
+  type CheckboxGroupValue,
+  type FieldValue,
   type SubmissionMatrixValueInput,
   type SubmissionValueInput,
-} from "@/app/(dashboard)/submissions/actions";
+} from "@/lib/forms/types";
+import {
+  evaluateVisible,
+  isDisplayOnly,
+  makeFieldKey,
+  parseCheckboxGroup,
+  serializeCheckboxGroup,
+} from "@/lib/forms/utils";
+
+import { createSubmission } from "@/app/(dashboard)/submissions/actions";
 
 interface Props {
   template: ClFormTemplate;
@@ -43,98 +49,7 @@ interface Props {
   fields: ClFormField[];
 }
 
-interface CheckboxGroupValue {
-  selected: string[];
-  other?: string;
-}
-
-type FieldValue = {
-  value: string | null;
-};
-
-function isDisplayOnly(type: ClFormField["type"]) {
-  return type === "info" || type === "image";
-}
-
-function makeFieldKey(fieldId: string, env?: string) {
-  return env ? `${fieldId}::${env}` : fieldId;
-}
-
-function parseCheckboxGroup(value: string | null): CheckboxGroupValue {
-  if (!value) return { selected: [] };
-  try {
-    const parsed = JSON.parse(value);
-    if (parsed && Array.isArray(parsed.selected)) {
-      return {
-        selected: parsed.selected,
-        other: typeof parsed.other === "string" ? parsed.other : undefined,
-      };
-    }
-  } catch {
-    // fallthrough
-  }
-  return { selected: [] };
-}
-
-function serializeCheckboxGroup(v: CheckboxGroupValue): string | null {
-  const hasOther = v.other !== undefined;
-  if (v.selected.length === 0 && !hasOther) return null;
-  return JSON.stringify({
-    selected: v.selected,
-    ...(hasOther ? { other: v.other ?? "" } : {}),
-  });
-}
-
-function evaluateVisible(
-  condition: VisibleWhen | null,
-  values: Record<string, FieldValue>,
-  env?: string,
-): boolean {
-  if (!condition) return true;
-  const targetKey = makeFieldKey(condition.field_id, env);
-  const fieldVal = values[targetKey];
-  if (!fieldVal) return false;
-  const raw = fieldVal.value;
-
-  if (condition.op === "truthy") {
-    if (raw === null || raw === undefined || raw === "") return false;
-    if (raw === "false") return false;
-    try {
-      const parsed = JSON.parse(raw);
-      if (parsed && Array.isArray(parsed.selected)) {
-        return parsed.selected.length > 0 || Boolean(parsed.other);
-      }
-    } catch {
-      // not JSON, fallthrough
-    }
-    return true;
-  }
-
-  if (condition.op === "eq") {
-    return raw === condition.value;
-  }
-
-  if (condition.op === "includes") {
-    if (!condition.value) return false;
-    try {
-      const parsed = JSON.parse(raw ?? "");
-      if (parsed && Array.isArray(parsed.selected)) {
-        return parsed.selected.includes(condition.value);
-      }
-    } catch {
-      // not JSON
-    }
-    return raw === condition.value;
-  }
-
-  return true;
-}
-
-export function SubmissionForm({
-  template,
-  sections,
-  fields,
-}: Props) {
+export function SubmissionForm({ template, sections, fields }: Props) {
   const isMatrix = template.layout_mode === "matrix";
   const environments = useMemo(
     () => (template.environments ?? []) as string[],
@@ -186,15 +101,13 @@ export function SubmissionForm({
             f.type === "checkbox"
               ? v?.value !== "true"
               : f.type === "checkbox_group"
-              ? (() => {
-                  const parsed = parseCheckboxGroup(v?.value ?? null);
-                  return parsed.selected.length === 0 && !parsed.other;
-                })()
-              : !v?.value;
+                ? (() => {
+                    const parsed = parseCheckboxGroup(v?.value ?? null);
+                    return parsed.selected.length === 0 && !parsed.other;
+                  })()
+                : !v?.value;
           if (missing) {
-            toast.error(
-              `${f.label}${env ? ` (${env})` : ""}: obrigatório.`,
-            );
+            toast.error(`${f.label}${env ? ` (${env})` : ""}: obrigatório.`);
             return;
           }
         }
@@ -235,9 +148,7 @@ export function SubmissionForm({
       <CardHeader className="p-4 sm:p-6">
         <CardTitle className="text-lg sm:text-xl">{template.name}</CardTitle>
         {template.description ? (
-          <p className="text-sm text-muted-foreground">
-            {template.description}
-          </p>
+          <p className="text-sm text-muted-foreground">{template.description}</p>
         ) : null}
       </CardHeader>
       <CardContent className="space-y-8 p-4 pt-0 sm:p-6 sm:pt-0">
@@ -425,9 +336,7 @@ function MatrixRenderer({
                         <div className="font-medium">
                           {field.label}
                           {field.required ? (
-                            <span className="ml-1 text-destructive-foreground">
-                              *
-                            </span>
+                            <span className="ml-1 text-destructive-foreground">*</span>
                           ) : null}
                         </div>
                         {field.help_text ? (
@@ -438,16 +347,9 @@ function MatrixRenderer({
                       </td>
                       {environments.map((env) => {
                         const key = makeFieldKey(field.id, env);
-                        const visible = evaluateVisible(
-                          field.visible_when,
-                          values,
-                          env,
-                        );
+                        const visible = evaluateVisible(field.visible_when, values, env);
                         return (
-                          <td
-                            key={env}
-                            className="border-l border-t p-2 align-top"
-                          >
+                          <td key={env} className="border-l border-t p-2 align-top">
                             {visible ? (
                               <FieldInput
                                 field={field}
@@ -456,9 +358,7 @@ function MatrixRenderer({
                                 onChange={(patch) => onChange(key, patch)}
                               />
                             ) : (
-                              <span className="text-xs text-muted-foreground">
-                                —
-                              </span>
+                              <span className="text-xs text-muted-foreground">—</span>
                             )}
                           </td>
                         );
@@ -479,8 +379,7 @@ function InfoFieldView({ field }: { field: ClFormField }) {
   const opts = (field.options as Exclude<FieldOptions, null>) ?? {};
   const content = opts.content ?? field.help_text ?? "";
   const lines = content.split("\n").filter((l) => l.trim().length > 0);
-  const isAllBullets =
-    lines.length > 0 && lines.every((l) => l.trim().startsWith("- "));
+  const isAllBullets = lines.length > 0 && lines.every((l) => l.trim().startsWith("- "));
 
   return (
     <div className="rounded-md border border-dashed bg-muted/20 p-3">
@@ -533,11 +432,9 @@ function FieldInput({
     );
   }
 
-  const showLabel = !compact;
+  const showLabel = !compact && field.type !== "checkbox";
   const groupValue =
-    field.type === "checkbox_group"
-      ? parseCheckboxGroup(value?.value ?? null)
-      : null;
+    field.type === "checkbox_group" ? parseCheckboxGroup(value?.value ?? null) : null;
 
   function updateGroup(next: CheckboxGroupValue) {
     onChange({ value: serializeCheckboxGroup(next) });
@@ -554,9 +451,7 @@ function FieldInput({
         </Label>
       ) : null}
       {showLabel && field.help_text ? (
-        <p className="text-xs italic text-muted-foreground">
-          {field.help_text}
-        </p>
+        <p className="text-xs italic text-muted-foreground">{field.help_text}</p>
       ) : null}
 
       {field.type === "text" ? (
@@ -592,22 +487,28 @@ function FieldInput({
 
       {field.type === "checkbox" ? (
         <div className="space-y-1 pt-1">
-          <div className="flex items-center gap-2">
+          <label className="flex cursor-pointer items-center gap-2">
             <Checkbox
               checked={value?.value === "true"}
               onCheckedChange={(checked) =>
                 onChange({ value: checked ? "true" : "false" })
               }
             />
-            <span className="text-sm">{compact ? "Sim" : field.label}</span>
+            <span className="text-sm">
+              {compact ? "Sim" : field.label}
+              {!compact && field.required ? (
+                <span className="ml-1 text-destructive-foreground">*</span>
+              ) : null}
+            </span>
             {opts.recommended_value ? <RecommendedBadge /> : null}
-          </div>
+          </label>
+          {!compact && field.help_text ? (
+            <p className="pl-6 text-xs italic text-muted-foreground">{field.help_text}</p>
+          ) : null}
           {opts.recommended_value && !compact ? (
-            <p className="text-[11px] text-amber-700">
+            <p className="pl-6 text-[11px] text-warning-foreground">
               StudioBIM recomenda:{" "}
-              <strong>
-                {opts.recommended_value === "true" ? "Sim" : "Não"}
-              </strong>
+              <strong>{opts.recommended_value === "true" ? "Sim" : "Não"}</strong>
             </p>
           ) : null}
         </div>
@@ -642,7 +543,7 @@ function FieldInput({
                 onCheckedChange={(v) =>
                   updateGroup({
                     ...groupValue,
-                    other: v ? groupValue.other ?? "" : undefined,
+                    other: v ? (groupValue.other ?? "") : undefined,
                   })
                 }
               />
@@ -651,9 +552,7 @@ function FieldInput({
                 className="h-8 flex-1"
                 value={groupValue.other ?? ""}
                 disabled={groupValue.other === undefined}
-                onChange={(e) =>
-                  updateGroup({ ...groupValue, other: e.target.value })
-                }
+                onChange={(e) => updateGroup({ ...groupValue, other: e.target.value })}
               />
             </div>
           ) : null}
@@ -661,10 +560,7 @@ function FieldInput({
       ) : null}
 
       {field.type === "select" ? (
-        <Select
-          value={value?.value ?? ""}
-          onValueChange={(v) => onChange({ value: v })}
-        >
+        <Select value={value?.value ?? ""} onValueChange={(v) => onChange({ value: v })}>
           <SelectTrigger>
             <SelectValue placeholder="Selecione..." />
           </SelectTrigger>
@@ -696,7 +592,6 @@ function FieldInput({
           ))}
         </div>
       ) : null}
-
     </div>
   );
 }

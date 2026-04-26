@@ -109,9 +109,7 @@ export function ProjectCardMenu({ projectId, projectName }: ProjectCardMenuProps
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Renomear projeto</DialogTitle>
-            <DialogDescription>
-              Digite o novo nome para o projeto.
-            </DialogDescription>
+            <DialogDescription>Digite o novo nome para o projeto.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-2 py-2">
             <Label htmlFor="rename-input">Nome</Label>
@@ -140,18 +138,15 @@ export function ProjectCardMenu({ projectId, projectName }: ProjectCardMenuProps
           <DialogHeader>
             <DialogTitle>Apagar projeto</DialogTitle>
             <DialogDescription>
-              Tem certeza que deseja apagar <strong>{projectName}</strong>? Essa ação não pode ser desfeita.
+              Tem certeza que deseja apagar <strong>{projectName}</strong>? Essa ação não
+              pode ser desfeita.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteOpen(false)}>
               Cancelar
             </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDelete}
-              disabled={isPending}
-            >
+            <Button variant="destructive" onClick={handleDelete} disabled={isPending}>
               Apagar
             </Button>
           </DialogFooter>

@@ -59,9 +59,7 @@ export function ImportExistingTemplateDialog({
       arr.push(t);
       map.set(t.project_name, arr);
     }
-    return Array.from(map.entries()).sort((a, b) =>
-      a[0].localeCompare(b[0], "pt-BR"),
-    );
+    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0], "pt-BR"));
   }, [filtered]);
 
   function handleImport(templateId: string, templateName: string) {
@@ -85,8 +83,8 @@ export function ImportExistingTemplateDialog({
         <DialogHeader>
           <DialogTitle>Adicionar formulário existente</DialogTitle>
           <DialogDescription>
-            Escolha um formulário de outro projeto para copiar (campos, seções
-            e layout) para este projeto.
+            Escolha um formulário de outro projeto para copiar (campos, seções e layout)
+            para este projeto.
           </DialogDescription>
         </DialogHeader>
 
@@ -123,9 +121,7 @@ export function ImportExistingTemplateDialog({
                       className="flex items-center justify-between gap-3 rounded-md border bg-card px-3 py-2"
                     >
                       <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm font-medium">
-                          {t.name}
-                        </div>
+                        <div className="truncate text-sm font-medium">{t.name}</div>
                         <div className="mt-0.5">
                           {t.discipline_name ? (
                             <Badge
@@ -139,10 +135,7 @@ export function ImportExistingTemplateDialog({
                               {t.discipline_name}
                             </Badge>
                           ) : (
-                            <Badge
-                              variant="secondary"
-                              className="text-[10px]"
-                            >
+                            <Badge variant="secondary" className="text-[10px]">
                               Sem disciplina
                             </Badge>
                           )}

@@ -5,11 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 
-import type {
-  ClFormField,
-  ClFormSection,
-  ClFormTemplate,
-} from "@/lib/supabase/types";
+import type { ClFormField, ClFormSection, ClFormTemplate } from "@/lib/supabase/types";
 
 import { readIdentity, type PublicIdentity } from "../../identity-storage";
 import { PublicFooter, type PublicOfficeSettings } from "../../public-footer";
@@ -22,10 +18,7 @@ export interface PreviousFieldValue {
 }
 
 export type PreviousValuesMap = Record<string, PreviousFieldValue>;
-export type PreviousMatrixValuesMap = Record<
-  string,
-  Record<string, PreviousFieldValue>
->;
+export type PreviousMatrixValuesMap = Record<string, Record<string, PreviousFieldValue>>;
 
 interface Props {
   token: string;
@@ -103,6 +96,16 @@ export function PublicFillWrapper({
           previousByMatrix={previousByMatrix}
           allowResubmit={allowResubmit}
         />
+
+        <div className="mt-6 flex justify-start">
+          <Link
+            href={backHref}
+            className="inline-flex w-fit items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Voltar à lista
+          </Link>
+        </div>
       </div>
 
       <PublicFooter officeSettings={officeSettings} />

@@ -20,8 +20,7 @@ export function SettingsTabs() {
     <div className="border-b">
       <nav className="-mb-px flex gap-1">
         {tabs.map((tab) => {
-          const isActive =
-            pathname === tab.href || pathname.startsWith(`${tab.href}/`);
+          const isActive = pathname === tab.href || pathname.startsWith(`${tab.href}/`);
           const Icon = tab.icon;
           return (
             <Link

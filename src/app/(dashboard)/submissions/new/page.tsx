@@ -1,13 +1,8 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 
+import { BackLink } from "@/components/layout/back-link";
 import { createClient } from "@/lib/supabase/server";
-import type {
-  ClFormField,
-  ClFormSection,
-  ClFormTemplate,
-} from "@/lib/supabase/types";
+import type { ClFormField, ClFormSection, ClFormTemplate } from "@/lib/supabase/types";
 
 import { SubmissionForm } from "@/components/submission/submission-form";
 
@@ -57,13 +52,7 @@ export default async function NewSubmissionPage({
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div>
-        <Link
-          href={backHref}
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Voltar
-        </Link>
+        <BackLink href={backHref}>Voltar</BackLink>
       </div>
 
       <SubmissionForm

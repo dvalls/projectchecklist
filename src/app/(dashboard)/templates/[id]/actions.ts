@@ -49,18 +49,13 @@ export interface TemplateSavePayload {
   fields: FieldInput[];
 }
 
-export async function saveTemplate(
-  templateId: string,
-  payload: TemplateSavePayload,
-) {
+export async function saveTemplate(templateId: string, payload: TemplateSavePayload) {
   const supabase = createClient();
 
   if (!payload.name.trim()) return { error: "Nome é obrigatório." };
 
   if (payload.layout_mode === "matrix") {
-    const envs = (payload.environments ?? [])
-      .map((e) => e.trim())
-      .filter(Boolean);
+    const envs = (payload.environments ?? []).map((e) => e.trim()).filter(Boolean);
     if (envs.length === 0) {
       return {
         error: "Matriz requer pelo menos um ambiente.",
@@ -90,14 +85,10 @@ export async function saveTemplate(
   if (secFetchErr) return { error: secFetchErr.message };
 
   const incomingSectionIds = new Set(
-    payload.sections
-      .map((s) => s.id)
-      .filter((v): v is string => Boolean(v)),
+    payload.sections.map((s) => s.id).filter((v): v is string => Boolean(v)),
   );
   const sectionsToDelete =
-    existingSections
-      ?.filter((s) => !incomingSectionIds.has(s.id))
-      .map((s) => s.id) ?? [];
+    existingSections?.filter((s) => !incomingSectionIds.has(s.id)).map((s) => s.id) ?? [];
 
   if (sectionsToDelete.length > 0) {
     const { error } = await supabase
@@ -151,9 +142,7 @@ export async function saveTemplate(
     payload.fields.map((f) => f.id).filter((v): v is string => Boolean(v)),
   );
   const fieldsToDelete =
-    existingFields
-      ?.filter((f) => !incomingFieldIds.has(f.id))
-      .map((f) => f.id) ?? [];
+    existingFields?.filter((f) => !incomingFieldIds.has(f.id)).map((f) => f.id) ?? [];
 
   if (fieldsToDelete.length > 0) {
     const { error } = await supabase
@@ -168,7 +157,7 @@ export async function saveTemplate(
   const fieldsWithSections = payload.fields.map((f) => ({
     ...f,
     section_id: f.section_local_id
-      ? localToRealSection.get(f.section_local_id) ?? null
+      ? (localToRealSection.get(f.section_local_id) ?? null)
       : null,
   }));
 
@@ -240,8 +229,7 @@ export async function saveTemplate(
     }
 
     const triggerLocalOrId = field.visible_when.field_id;
-    const resolvedTrigger =
-      idLookup.get(triggerLocalOrId) ?? triggerLocalOrId;
+    const resolvedTrigger = idLookup.get(triggerLocalOrId) ?? triggerLocalOrId;
 
     const realFieldId =
       field.id ??
@@ -377,7 +365,7 @@ export async function duplicateTemplate(templateId: string) {
   const fieldIdMap = new Map<string, string>();
   for (const f of (fields ?? []) as ClFormField[]) {
     const mappedSectionId = f.section_id
-      ? sectionIdMap.get(f.section_id) ?? null
+      ? (sectionIdMap.get(f.section_id) ?? null)
       : null;
     const { data: newField, error: fErr } = await supabase
       .from("cl_form_fields")
@@ -421,4 +409,3 @@ export async function duplicateTemplate(templateId: string) {
   revalidatePath(`/templates`);
   return { success: true, templateId: newTemplateId };
 }
-

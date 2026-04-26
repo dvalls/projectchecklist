@@ -1,14 +1,10 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 
+import { BackLink } from "@/components/layout/back-link";
+import { EmptyState } from "@/components/layout/empty-state";
 import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatDateTime } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 import type {
   ClFormField,
@@ -23,15 +19,7 @@ import type {
 export const dynamic = "force-dynamic";
 
 function formatDate(iso: string | null) {
-  if (!iso) return "—";
-  try {
-    return new Date(iso).toLocaleString("pt-BR", {
-      dateStyle: "short",
-      timeStyle: "short",
-    });
-  } catch {
-    return iso;
-  }
+  return formatDateTime(iso) || "—";
 }
 
 function renderValue(field: ClFormField, raw: string | null): string {
@@ -105,10 +93,7 @@ export default async function SubmissionDetailPage({
       .select("*")
       .eq("template_id", typedSubmission.template_id)
       .order("position"),
-    supabase
-      .from("cl_submission_values")
-      .select("*")
-      .eq("submission_id", params.id),
+    supabase.from("cl_submission_values").select("*").eq("submission_id", params.id),
     supabase
       .from("cl_submission_values_matrix")
       .select("*")
@@ -139,13 +124,7 @@ export default async function SubmissionDetailPage({
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <div>
-        <Link
-          href={backHref}
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Voltar para o template
-        </Link>
+        <BackLink href={backHref}>Voltar para o template</BackLink>
       </div>
 
       <Card>
@@ -153,28 +132,18 @@ export default async function SubmissionDetailPage({
           <CardTitle>{typedTemplate.name}</CardTitle>
           <div className="flex flex-wrap items-center gap-3 pt-2 text-xs text-muted-foreground">
             <Badge
-              variant={
-                typedSubmission.status === "submitted"
-                  ? "default"
-                  : "secondary"
-              }
+              variant={typedSubmission.status === "submitted" ? "default" : "secondary"}
             >
-              {typedSubmission.status === "submitted"
-                ? "Enviado"
-                : "Rascunho"}
+              {typedSubmission.status === "submitted" ? "Enviado" : "Rascunho"}
             </Badge>
             <span>
               Enviado em{" "}
-              {formatDate(
-                typedSubmission.submitted_at ?? typedSubmission.created_at,
-              )}
+              {formatDate(typedSubmission.submitted_at ?? typedSubmission.created_at)}
             </span>
             {typedSubmission.client_name ? (
               <span>
                 Cliente: <strong>{typedSubmission.client_name}</strong>
-                {typedSubmission.client_email
-                  ? ` (${typedSubmission.client_email})`
-                  : ""}
+                {typedSubmission.client_email ? ` (${typedSubmission.client_email})` : ""}
               </span>
             ) : null}
             {typedSubmission.public_link_id ? (
@@ -184,7 +153,10 @@ export default async function SubmissionDetailPage({
         </CardHeader>
         <CardContent className="space-y-6">
           {typedSections.length === 0 && typedFields.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Sem respostas.</p>
+            <EmptyState
+              title="Sem respostas"
+              description="Esta submissão não contém respostas registradas."
+            />
           ) : (
             (typedSections.length > 0
               ? typedSections
@@ -218,21 +190,13 @@ export default async function SubmissionDetailPage({
 
                       if (isMatrix) {
                         return (
-                          <div
-                            key={field.id}
-                            className="rounded-md border p-3 text-sm"
-                          >
+                          <div key={field.id} className="rounded-md border p-3 text-sm">
                             <div className="font-medium">{field.label}</div>
                             <dl className="mt-2 grid gap-1 text-xs">
                               {environments.map((env) => {
-                                const v = matrixByKey.get(
-                                  `${field.id}::${env}`,
-                                );
+                                const v = matrixByKey.get(`${field.id}::${env}`);
                                 return (
-                                  <div
-                                    key={env}
-                                    className="flex items-baseline gap-2"
-                                  >
+                                  <div key={env} className="flex items-baseline gap-2">
                                     <dt className="w-28 shrink-0 font-medium uppercase tracking-wide text-muted-foreground">
                                       {env}
                                     </dt>

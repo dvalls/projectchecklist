@@ -2,12 +2,7 @@ import type { Config } from "tailwindcss";
 
 const config: Config = {
   darkMode: ["class"],
-  content: [
-    "./pages/**/*.{ts,tsx}",
-    "./components/**/*.{ts,tsx}",
-    "./app/**/*.{ts,tsx}",
-    "./src/**/*.{ts,tsx}",
-  ],
+  content: ["./src/**/*.{ts,tsx}"],
   theme: {
     container: {
       center: true,
@@ -18,12 +13,7 @@ const config: Config = {
     },
     extend: {
       fontFamily: {
-        sans: [
-          "var(--font-inter)",
-          "ui-sans-serif",
-          "system-ui",
-          "sans-serif",
-        ],
+        sans: ["var(--font-inter)", "ui-sans-serif", "system-ui", "sans-serif"],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -87,14 +77,14 @@ const config: Config = {
           to: { height: "0" },
         },
         "glow-pulse": {
-          "0%, 100%": { boxShadow: "0 0 4px 1px hsl(var(--primary) / 0.25)" },
-          "50%": { boxShadow: "0 0 10px 3px hsl(var(--primary) / 0.45)" },
+          "0%, 100%": { boxShadow: "0 0 8px 2px hsl(var(--primary) / 0.5)" },
+          "50%": { boxShadow: "0 0 22px 7px hsl(var(--primary) / 0.8)" },
         },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
-        "glow-pulse": "glow-pulse 10s ease-in-out infinite",
+        "glow-pulse": "glow-pulse 1.8s ease-in-out infinite",
       },
     },
   },

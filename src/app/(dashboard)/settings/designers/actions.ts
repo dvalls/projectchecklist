@@ -2,79 +2,75 @@
 
 import { revalidatePath } from "next/cache";
 
+import { designerInputSchema, type DesignerInput } from "@/lib/schemas/designers";
+import { assertUser, fail, ok } from "@/lib/server-action";
 import { createClient } from "@/lib/supabase/server";
 
-export interface DesignerInput {
-  name: string;
-  role: string | null;
-  formation: string | null;
-  photo_url: string | null;
-}
+export type { DesignerInput };
 
 export async function createDesigner(input: DesignerInput) {
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Não autenticado." };
+  const parsed = designerInputSchema.safeParse(input);
+  if (!parsed.success) {
+    return fail(parsed.error.issues[0]?.message ?? "Dados inválidos.");
+  }
 
-  const name = input.name.trim();
-  if (!name) return { error: "Nome é obrigatório." };
+  const supabase = createClient();
+  const auth = await assertUser(supabase);
+  if (!auth.user) return fail(auth.error);
+
+  const { name, role, formation, photo_url } = parsed.data;
 
   const { error } = await supabase.from("cl_designers").insert({
     name,
-    role: input.role?.trim() || null,
-    formation: input.formation?.trim() || null,
-    photo_url: input.photo_url || null,
-    created_by: user.id,
+    role: role?.trim() || null,
+    formation: formation?.trim() || null,
+    photo_url: photo_url || null,
+    created_by: auth.user.id,
   });
 
-  if (error) return { error: error.message };
+  if (error) return fail(error.message);
 
   revalidatePath("/settings/designers");
-  return { success: true };
+  return ok();
 }
 
 export async function updateDesigner(id: string, input: DesignerInput) {
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Não autenticado." };
+  const parsed = designerInputSchema.safeParse(input);
+  if (!parsed.success) {
+    return fail(parsed.error.issues[0]?.message ?? "Dados inválidos.");
+  }
 
-  const name = input.name.trim();
-  if (!name) return { error: "Nome é obrigatório." };
+  const supabase = createClient();
+  const auth = await assertUser(supabase);
+  if (!auth.user) return fail(auth.error);
+
+  const { name, role, formation, photo_url } = parsed.data;
 
   const { error } = await supabase
     .from("cl_designers")
     .update({
       name,
-      role: input.role?.trim() || null,
-      formation: input.formation?.trim() || null,
-      photo_url: input.photo_url || null,
+      role: role?.trim() || null,
+      formation: formation?.trim() || null,
+      photo_url: photo_url || null,
     })
     .eq("id", id);
 
-  if (error) return { error: error.message };
+  if (error) return fail(error.message);
 
   revalidatePath("/settings/designers");
-  return { success: true };
+  return ok();
 }
 
 export async function deleteDesigner(id: string) {
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Não autenticado." };
+  const auth = await assertUser(supabase);
+  if (!auth.user) return fail(auth.error);
 
-  const { error } = await supabase
-    .from("cl_designers")
-    .delete()
-    .eq("id", id);
+  const { error } = await supabase.from("cl_designers").delete().eq("id", id);
 
-  if (error) return { error: error.message };
+  if (error) return fail(error.message);
 
   revalidatePath("/settings/designers");
-  return { success: true };
+  return ok();
 }

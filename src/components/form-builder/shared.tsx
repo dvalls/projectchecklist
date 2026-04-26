@@ -16,13 +16,10 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
-import type {
-  ColumnSpan,
-  FieldType,
-  SectionColumns,
-} from "@/lib/supabase/types";
+import type { ColumnSpan, FieldType, SectionColumns } from "@/lib/supabase/types";
 
 export const RECOMMENDED_LABEL = "StudioBIM recomenda";
 
@@ -123,30 +120,37 @@ export function TypePicker({
   value: FieldType;
   onChange: (v: FieldType) => void;
 }) {
+  const current = TYPE_META[value];
+  const CurrentIcon = current.icon;
+
   return (
-    <div className="grid grid-cols-2 gap-2">
-      {FIELD_TYPE_ORDER.map((t) => {
-        const meta = TYPE_META[t];
-        const active = value === t;
-        const Icon = meta.icon;
-        return (
-          <button
-            key={t}
-            type="button"
-            onClick={() => onChange(t)}
-            className={cn(
-              "flex items-center gap-2 rounded-md border px-2.5 py-2 text-left text-xs transition-colors",
-              active
-                ? "border-foreground bg-foreground text-background"
-                : "border-border bg-background hover:bg-muted",
-            )}
-          >
-            <Icon className="h-4 w-4 shrink-0" />
-            <span className="truncate font-medium">{meta.short}</span>
-          </button>
-        );
-      })}
-    </div>
+    <Select value={value} onValueChange={(v) => onChange(v as FieldType)}>
+      <SelectTrigger className="h-9">
+        <span className="!flex min-w-0 items-center gap-2">
+          <CurrentIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <span className="truncate">{current.label}</span>
+        </span>
+      </SelectTrigger>
+      <SelectContent>
+        {FIELD_TYPE_ORDER.map((t) => {
+          const meta = TYPE_META[t];
+          const Icon = meta.icon;
+          return (
+            <SelectItem key={t} value={t}>
+              <span className="flex items-center gap-2">
+                <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <span className="flex flex-col">
+                  <span className="text-sm leading-tight">{meta.label}</span>
+                  <span className="text-[11px] leading-tight text-muted-foreground">
+                    {meta.description}
+                  </span>
+                </span>
+              </span>
+            </SelectItem>
+          );
+        })}
+      </SelectContent>
+    </Select>
   );
 }
 
@@ -171,8 +175,8 @@ function SegmentedBars({
                 ? "bg-background"
                 : "bg-foreground"
               : active
-              ? "bg-background/40"
-              : "bg-muted-foreground/30",
+                ? "bg-background/40"
+                : "bg-muted-foreground/30",
           )}
         />
       ))}
@@ -297,13 +301,7 @@ export function ChoiceLabel({
   return (
     <span className="inline-flex items-center gap-1.5">
       <span>{label}</span>
-      {recommended ? (
-        showBadge ? (
-          <RecommendedBadge />
-        ) : (
-          <RecommendedStar />
-        )
-      ) : null}
+      {recommended ? showBadge ? <RecommendedBadge /> : <RecommendedStar /> : null}
     </span>
   );
 }

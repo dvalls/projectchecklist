@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  Document,
-  Image,
-  Page,
-  StyleSheet,
-  Text,
-  View,
-} from "@react-pdf/renderer";
+import { Document, Image, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 
 import type {
   ClFormField,
@@ -17,10 +10,7 @@ import type {
   ClSubmissionValueMatrix,
 } from "@/lib/supabase/types";
 
-import type {
-  PublicFullReport,
-  ReportTemplateEntry,
-} from "../actions";
+import type { PublicFullReport, ReportTemplateEntry } from "../actions";
 import { formatDateTime, formatFieldValue } from "./format-value";
 
 const styles = StyleSheet.create({
@@ -297,16 +287,12 @@ function SectionedFields({
   const renderedSections = sectionsToRender
     .map((section) => {
       const secFields =
-        sections.length > 0
-          ? fields.filter((f) => f.section_id === section.id)
-          : fields;
+        sections.length > 0 ? fields.filter((f) => f.section_id === section.id) : fields;
       const visible = secFields.filter((f) => f.type !== "info");
       if (visible.length === 0) return null;
       return { section, visible };
     })
-    .filter((x): x is { section: ClFormSection; visible: ClFormField[] } =>
-      Boolean(x),
-    );
+    .filter((x): x is { section: ClFormSection; visible: ClFormField[] } => Boolean(x));
 
   if (renderedSections.length === 0) {
     return <Text style={styles.emptyState}>Sem respostas registradas.</Text>;
@@ -326,10 +312,7 @@ function SectionedFields({
                   <Text style={styles.matrixFieldLabel}>{field.label}</Text>
                   {environments.map((env) => {
                     const v = matrixByKey.get(`${field.id}::${env}`);
-                    const imgUrl = buildImageUrl(
-                      publicBaseUrl,
-                      v?.image_url ?? null,
-                    );
+                    const imgUrl = buildImageUrl(publicBaseUrl, v?.image_url ?? null);
                     return (
                       <View key={env} style={{ marginBottom: 2 }}>
                         <View style={styles.matrixRow}>
@@ -429,9 +412,7 @@ function Cover({ data }: { data: PublicFullReport }) {
                     )}
                     <View style={{ flex: 1 }}>
                       <Text style={styles.designerName}>{d.name}</Text>
-                      {d.role ? (
-                        <Text style={styles.designerRole}>{d.role}</Text>
-                      ) : null}
+                      {d.role ? <Text style={styles.designerRole}>{d.role}</Text> : null}
                     </View>
                   </View>
                 </View>
@@ -475,12 +456,7 @@ function SubmissionBlock({
   entry: ReportTemplateEntry;
   submission: Pick<
     ClFormSubmission,
-    | "id"
-    | "client_name"
-    | "client_email"
-    | "submitted_at"
-    | "created_at"
-    | "status"
+    "id" | "client_name" | "client_email" | "submitted_at" | "created_at" | "status"
   >;
   values: ClSubmissionValue[];
   matrixValues: ClSubmissionValueMatrix[];
@@ -489,12 +465,8 @@ function SubmissionBlock({
   return (
     <View style={styles.submissionBlock} wrap>
       <View style={styles.submissionHeader} wrap={false}>
-        <Text style={styles.submissionName}>
-          {submission.client_name ?? "Anônimo"}
-        </Text>
-        <Text style={styles.submissionMeta}>
-          {submission.client_email ?? "—"}
-        </Text>
+        <Text style={styles.submissionName}>{submission.client_name ?? "Anônimo"}</Text>
+        <Text style={styles.submissionMeta}>{submission.client_email ?? "—"}</Text>
         <Text style={styles.submissionMeta}>
           Enviado em {formatDateTime(submission.submitted_at ?? submission.created_at)}
         </Text>
@@ -526,15 +498,11 @@ export function ReportDocument({ data }: { data: PublicFullReport }) {
               <View style={styles.templateHeader}>
                 <Text style={styles.templateTitle}>{entry.template.name}</Text>
                 {entry.template.description ? (
-                  <Text style={styles.templateMeta}>
-                    {entry.template.description}
-                  </Text>
+                  <Text style={styles.templateMeta}>{entry.template.description}</Text>
                 ) : null}
                 <Text style={styles.templateMeta}>
                   {entry.submissions.length}{" "}
-                  {entry.submissions.length === 1
-                    ? "preenchimento"
-                    : "preenchimentos"}
+                  {entry.submissions.length === 1 ? "preenchimento" : "preenchimentos"}
                 </Text>
               </View>
 

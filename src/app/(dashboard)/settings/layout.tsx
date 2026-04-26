@@ -1,18 +1,14 @@
+import { PageHeader } from "@/components/layout/page-header";
+
 import { SettingsTabs } from "./settings-tabs";
 
-export default function SettingsLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function SettingsLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Configurações</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Cadastros globais compartilhados entre todos os projetos.
-        </p>
-      </div>
+      <PageHeader
+        title="Configurações"
+        description="Cadastros globais compartilhados entre todos os projetos."
+      />
       <SettingsTabs />
       <div>{children}</div>
     </div>

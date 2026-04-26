@@ -143,7 +143,7 @@ export async function importExistingTemplate(
   const fieldIdMap = new Map<string, string>();
   for (const f of (fields ?? []) as ClFormField[]) {
     const mappedSectionId = f.section_id
-      ? sectionIdMap.get(f.section_id) ?? null
+      ? (sectionIdMap.get(f.section_id) ?? null)
       : null;
     const { data: newField, error: fErr } = await supabase
       .from("cl_form_fields")

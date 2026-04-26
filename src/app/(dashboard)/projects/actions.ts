@@ -3,38 +3,34 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { projectCreateSchema, projectRenameSchema } from "@/lib/schemas/projects";
+import { assertUser, fail, ok } from "@/lib/server-action";
 import { createClient } from "@/lib/supabase/server";
 
 export async function createProject(formData: FormData) {
-  const name = String(formData.get("name") ?? "").trim();
-  const description = String(formData.get("description") ?? "").trim();
-
-  if (!name) {
-    return { error: "Nome do projeto é obrigatório." };
+  const parsed = projectCreateSchema.safeParse({
+    name: formData.get("name") ?? "",
+    description: formData.get("description") ?? null,
+  });
+  if (!parsed.success) {
+    return fail(parsed.error.issues[0]?.message ?? "Dados inválidos.");
   }
 
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return { error: "Usuário não autenticado." };
-  }
+  const auth = await assertUser(supabase);
+  if (!auth.user) return fail(auth.error);
 
   const { data, error } = await supabase
     .from("cl_projects")
     .insert({
-      name,
-      description: description || null,
-      created_by: user.id,
+      name: parsed.data.name,
+      description: parsed.data.description || null,
+      created_by: auth.user.id,
     })
     .select()
     .single();
 
-  if (error) {
-    return { error: error.message };
-  }
+  if (error) return fail(error.message);
 
   revalidatePath("/projects");
   redirect(`/projects/${data.id}`);
@@ -42,42 +38,36 @@ export async function createProject(formData: FormData) {
 
 export async function deleteProject(projectId: string) {
   const supabase = createClient();
-  const { error } = await supabase
-    .from("cl_projects")
-    .delete()
-    .eq("id", projectId);
+  const { error } = await supabase.from("cl_projects").delete().eq("id", projectId);
 
-  if (error) {
-    return { error: error.message };
-  }
+  if (error) return fail(error.message);
 
   revalidatePath("/projects");
-  return { success: true };
+  return ok();
 }
 
 export async function renameProject(projectId: string, name: string) {
-  const trimmed = name.trim();
-  if (!trimmed) return { error: "Nome é obrigatório." };
+  const parsed = projectRenameSchema.safeParse({ id: projectId, name });
+  if (!parsed.success) {
+    return fail(parsed.error.issues[0]?.message ?? "Dados inválidos.");
+  }
 
   const supabase = createClient();
   const { error } = await supabase
     .from("cl_projects")
-    .update({ name: trimmed })
-    .eq("id", projectId);
+    .update({ name: parsed.data.name })
+    .eq("id", parsed.data.id);
 
-  if (error) return { error: error.message };
+  if (error) return fail(error.message);
 
   revalidatePath("/projects");
-  return { success: true };
+  return ok();
 }
 
 export async function duplicateProject(projectId: string) {
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return { error: "Não autenticado." };
+  const auth = await assertUser(supabase);
+  if (!auth.user) return fail(auth.error);
 
   const { data: project, error: fetchError } = await supabase
     .from("cl_projects")
@@ -85,16 +75,16 @@ export async function duplicateProject(projectId: string) {
     .eq("id", projectId)
     .single();
 
-  if (fetchError || !project) return { error: "Projeto não encontrado." };
+  if (fetchError || !project) return fail("Projeto não encontrado.");
 
   const { error } = await supabase.from("cl_projects").insert({
     name: `Cópia de ${project.name}`,
     description: project.description ?? null,
-    created_by: user.id,
+    created_by: auth.user.id,
   });
 
-  if (error) return { error: error.message };
+  if (error) return fail(error.message);
 
   revalidatePath("/projects");
-  return { success: true };
+  return ok();
 }

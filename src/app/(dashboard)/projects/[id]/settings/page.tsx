@@ -1,15 +1,15 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 
+import { BackLink } from "@/components/layout/back-link";
+import { PageHeader } from "@/components/layout/page-header";
+import { BUCKETS } from "@/lib/constants";
+import { getPublicBucketBaseUrl } from "@/lib/storage";
 import { createClient } from "@/lib/supabase/server";
 import type { ClDesigner, ClProjectDesigner } from "@/lib/supabase/types";
 
 import { ProjectBehaviorSettings } from "../project-behavior-settings";
 import { ProjectCoverSettings } from "../project-cover-settings";
 import { ProjectDesignersPanel } from "../project-designers-panel";
-
-const BUCKET = "checklist-images";
 
 export const dynamic = "force-dynamic";
 
@@ -28,40 +28,29 @@ export default async function ProjectSettingsPage({
 
   if (!project) notFound();
 
-  const [{ data: allDesigners }, { data: projectDesigners }] =
-    await Promise.all([
-      supabase.from("cl_designers").select("*").order("name"),
-      supabase
-        .from("cl_project_designers")
-        .select("*")
-        .eq("project_id", params.id)
-        .order("position"),
-    ]);
+  const [{ data: allDesigners }, { data: projectDesigners }] = await Promise.all([
+    supabase.from("cl_designers").select("*").order("name"),
+    supabase
+      .from("cl_project_designers")
+      .select("*")
+      .eq("project_id", params.id)
+      .order("position"),
+  ]);
 
   const typedAllDesigners = (allDesigners ?? []) as ClDesigner[];
   const selectedDesignerIds = ((projectDesigners ?? []) as ClProjectDesigner[])
     .sort((a, b) => a.position - b.position)
     .map((d) => d.designer_id);
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
-  const publicBaseUrl = `${supabaseUrl}/storage/v1/object/public/${BUCKET}`;
+  const publicBaseUrl = getPublicBucketBaseUrl(BUCKETS.CHECKLIST_IMAGES);
 
   return (
     <div className="space-y-6">
       <div>
-        <Link
-          href={`/projects/${project.id}`}
-          className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-4 w-4" />
+        <BackLink href={`/projects/${project.id}`} className="mb-4">
           Voltar para o projeto
-        </Link>
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Configurações do projeto
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {project.name}
-        </p>
+        </BackLink>
+        <PageHeader title="Configurações do projeto" description={project.name} />
       </div>
 
       <ProjectCoverSettings

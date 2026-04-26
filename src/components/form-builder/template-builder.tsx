@@ -149,7 +149,7 @@ function fieldsFromInitial(
     localId: f.id,
     id: f.id,
     section_local_id: f.section_id
-      ? sectionLookup.get(f.section_id) ?? defaultSectionLocalId
+      ? (sectionLookup.get(f.section_id) ?? defaultSectionLocalId)
       : defaultSectionLocalId,
     group_key: f.group_key,
     label: f.label,
@@ -192,9 +192,7 @@ export function TemplateBuilder({
   const [layoutMode, setLayoutMode] = useState<LayoutMode>(
     template.layout_mode ?? "standard",
   );
-  const [environments, setEnvironments] = useState<string[]>(
-    template.environments ?? [],
-  );
+  const [environments, setEnvironments] = useState<string[]>(template.environments ?? []);
 
   const [sections, setSections] = useState<EditorSection[]>(() =>
     sectionsFromInitial(initialSections),
@@ -208,15 +206,9 @@ export function TemplateBuilder({
     return fieldsFromInitial(initialFields, sectionLookup, defaultSection);
   });
 
-  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(
-    new Set(),
-  );
-  const [expandedFieldLocalId, setExpandedFieldLocalId] = useState<
-    string | null
-  >(null);
-  const [justCreatedLocalId, setJustCreatedLocalId] = useState<string | null>(
-    null,
-  );
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
+  const [expandedFieldLocalId, setExpandedFieldLocalId] = useState<string | null>(null);
+  const [justCreatedLocalId, setJustCreatedLocalId] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [renameOpen, setRenameOpen] = useState(false);
   const [renameValue, setRenameValue] = useState("");
@@ -259,13 +251,8 @@ export function TemplateBuilder({
     setSections((prev) => [...prev, newSection]);
   }
 
-  function updateSection(
-    localId: string,
-    updater: (s: EditorSection) => EditorSection,
-  ) {
-    setSections((prev) =>
-      prev.map((s) => (s.local_id === localId ? updater(s) : s)),
-    );
+  function updateSection(localId: string, updater: (s: EditorSection) => EditorSection) {
+    setSections((prev) => prev.map((s) => (s.local_id === localId ? updater(s) : s)));
   }
 
   function deleteSection(localId: string) {
@@ -311,13 +298,8 @@ export function TemplateBuilder({
     });
   }
 
-  function updateField(
-    localId: string,
-    updater: (f: EditorField) => EditorField,
-  ) {
-    setFields((prev) =>
-      prev.map((f) => (f.localId === localId ? updater(f) : f)),
-    );
+  function updateField(localId: string, updater: (f: EditorField) => EditorField) {
+    setFields((prev) => prev.map((f) => (f.localId === localId ? updater(f) : f)));
   }
 
   function deleteField(localId: string) {
@@ -338,12 +320,8 @@ export function TemplateBuilder({
     if (!over || active.id === over.id) return;
 
     setFields((prev) => {
-      const sectionFields = prev.filter(
-        (f) => f.section_local_id === sectionLocalId,
-      );
-      const otherFields = prev.filter(
-        (f) => f.section_local_id !== sectionLocalId,
-      );
+      const sectionFields = prev.filter((f) => f.section_local_id === sectionLocalId);
+      const otherFields = prev.filter((f) => f.section_local_id !== sectionLocalId);
       const oldIndex = sectionFields.findIndex((f) => f.localId === active.id);
       const newIndex = sectionFields.findIndex((f) => f.localId === over.id);
       if (oldIndex < 0 || newIndex < 0) return prev;
@@ -440,6 +418,21 @@ export function TemplateBuilder({
     [sections, fields],
   );
 
+  const fieldCounts = useMemo(() => {
+    let questions = 0;
+    let informational = 0;
+    let required = 0;
+    for (const f of fields) {
+      if (f.type === "info" || f.type === "image") {
+        informational += 1;
+      } else {
+        questions += 1;
+        if (f.required) required += 1;
+      }
+    }
+    return { questions, informational, required };
+  }, [fields]);
+
   return (
     <div className="space-y-4">
       <div className="sticky top-14 z-20 -mx-4 flex flex-col gap-2 border-b bg-background/80 px-4 py-2 backdrop-blur sm:flex-row sm:items-center sm:gap-3">
@@ -452,91 +445,87 @@ export function TemplateBuilder({
           />
         </div>
         <div className="flex flex-wrap items-center gap-2">
-        <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
-          <DialogTrigger asChild>
-            <Button variant="outline" size="sm">
-              <Settings2 className="mr-1.5 h-4 w-4" />
-              Configurações
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle>Configurações do formulário</DialogTitle>
-              <DialogDescription>
-                Descrição, layout e ambientes do template.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-1.5">
-                <Label className="text-xs">Descrição</Label>
-                <Textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  rows={2}
-                  placeholder="Descrição (opcional)"
-                />
+          <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Settings2 className="mr-1.5 h-4 w-4" />
+                Configurações
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle>Configurações do formulário</DialogTitle>
+                <DialogDescription>
+                  Descrição, layout e ambientes do template.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Descrição</Label>
+                  <Textarea
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    rows={2}
+                    placeholder="Descrição (opcional)"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Modo de layout</Label>
+                  <Select
+                    value={layoutMode}
+                    onValueChange={(v) => setLayoutMode(v as LayoutMode)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="standard">Padrão</SelectItem>
+                      <SelectItem value="matrix">Matriz por ambiente</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[11px] text-muted-foreground">
+                    Use &quot;Matriz por ambiente&quot; quando as mesmas perguntas se
+                    repetem para várias áreas (ex.: WC 01, WC 02…).
+                  </p>
+                </div>
+                {layoutMode === "matrix" ? (
+                  <EnvironmentsEditor value={environments} onChange={setEnvironments} />
+                ) : null}
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Modo de layout</Label>
-                <Select
-                  value={layoutMode}
-                  onValueChange={(v) => setLayoutMode(v as LayoutMode)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="standard">Padrão</SelectItem>
-                    <SelectItem value="matrix">Matriz por ambiente</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-[11px] text-muted-foreground">
-                  Use &quot;Matriz por ambiente&quot; quando as mesmas
-                  perguntas se repetem para várias áreas (ex.: WC 01, WC
-                  02…).
-                </p>
-              </div>
-              {layoutMode === "matrix" ? (
-                <EnvironmentsEditor
-                  value={environments}
-                  onChange={setEnvironments}
-                />
-              ) : null}
-            </div>
-          </DialogContent>
-        </Dialog>
+            </DialogContent>
+          </Dialog>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="px-2" title="Mais opções">
-              <MoreVertical className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              onClick={() => {
-                setRenameValue(name);
-                setRenameOpen(true);
-              }}
-            >
-              <Pencil className="mr-2 h-4 w-4" />
-              Renomear
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              className="text-destructive focus:bg-destructive focus:text-destructive-foreground"
-              onClick={() => setDeleteOpen(true)}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Apagar formulário
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="px-2" title="Mais opções">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={() => {
+                  setRenameValue(name);
+                  setRenameOpen(true);
+                }}
+              >
+                <Pencil className="mr-2 h-4 w-4" />
+                Renomear
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive focus:bg-destructive focus:text-destructive-foreground"
+                onClick={() => setDeleteOpen(true)}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Apagar formulário
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
-        <Button onClick={handleSave} disabled={isSaving} size="sm">
-          <Save className="mr-1.5 h-4 w-4" />
-          {isSaving ? "Salvando…" : "Salvar"}
-        </Button>
+          <Button onClick={handleSave} disabled={isSaving} size="sm">
+            <Save className="mr-1.5 h-4 w-4" />
+            {isSaving ? "Salvando…" : "Salvar"}
+          </Button>
         </div>
       </div>
 
@@ -545,148 +534,161 @@ export function TemplateBuilder({
         className="!block !overflow-visible lg:!flex"
         id="template-builder-panels"
       >
-        <Panel defaultSize={62} minSize={30} id="editor-panel" className="!overflow-visible lg:!overflow-hidden">
-        <div className="min-w-0 space-y-3 lg:pr-2">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div className="text-xs text-muted-foreground">
-              {sections.length}{" "}
-              {sections.length === 1 ? "seção" : "seções"} ·{" "}
-              {fields.length} {fields.length === 1 ? "campo" : "campos"}
-            </div>
-            <Button size="sm" variant="outline" onClick={addSection} className="w-full sm:w-auto">
-              <Plus className="mr-1 h-3.5 w-3.5" />
-              Nova seção
-            </Button>
-          </div>
-
-          {sections.map((section) => {
-            const sectionFields = fields.filter(
-              (f) => f.section_local_id === section.local_id,
-            );
-            const collapsed = collapsedSections.has(section.local_id);
-
-            return (
-              <div
-                key={section.local_id}
-                className="overflow-hidden rounded-lg border bg-background"
+        <Panel
+          defaultSize={62}
+          minSize={30}
+          id="editor-panel"
+          className="!overflow-visible lg:!overflow-hidden"
+        >
+          <div className="min-w-0 space-y-3 lg:pr-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="text-xs text-muted-foreground">
+                {sections.length} {sections.length === 1 ? "seção" : "seções"} ·{" "}
+                {fieldCounts.questions}{" "}
+                {fieldCounts.questions === 1 ? "pergunta" : "perguntas"}
+                {fieldCounts.informational > 0 ? (
+                  <>
+                    {" "}
+                    · {fieldCounts.informational}{" "}
+                    {fieldCounts.informational === 1 ? "informativo" : "informativos"}
+                  </>
+                ) : null}{" "}
+                · {fieldCounts.required}{" "}
+                {fieldCounts.required === 1 ? "obrigatória" : "obrigatórias"}
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={addSection}
+                className="w-full sm:w-auto"
               >
-                <div className="flex flex-wrap items-center gap-2 border-b bg-muted/30 px-2 py-1.5">
-                  <button
-                    type="button"
-                    onClick={() => toggleSection(section.local_id)}
-                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-muted"
-                    aria-label={collapsed ? "Expandir" : "Recolher"}
-                  >
-                    {collapsed ? (
-                      <ChevronRight className="h-4 w-4" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4" />
-                    )}
-                  </button>
+                <Plus className="mr-1 h-3.5 w-3.5" />
+                Nova seção
+              </Button>
+            </div>
 
-                  <Input
-                    value={section.title}
-                    onChange={(e) =>
-                      updateSection(section.local_id, (s) => ({
-                        ...s,
-                        title: e.target.value,
-                      }))
-                    }
-                    placeholder="Título da seção"
-                    className="h-7 min-w-[12rem] flex-1 border-0 bg-transparent px-1 font-semibold uppercase tracking-wide shadow-none focus-visible:ring-0"
-                  />
-                  <Input
-                    value={section.subtitle ?? ""}
-                    onChange={(e) =>
-                      updateSection(section.local_id, (s) => ({
-                        ...s,
-                        subtitle: e.target.value || null,
-                      }))
-                    }
-                    placeholder="Subtítulo (opcional)"
-                    className="h-7 hidden flex-1 border-0 bg-transparent px-1 italic text-muted-foreground shadow-none focus-visible:ring-0 md:block"
-                  />
+            {sections.map((section) => {
+              const sectionFields = fields.filter(
+                (f) => f.section_local_id === section.local_id,
+              );
+              const collapsed = collapsedSections.has(section.local_id);
 
-                  <div className="ml-auto flex items-center gap-1.5 pl-2">
-                    <ColumnsPicker
-                      value={section.columns}
-                      onChange={(v) =>
+              return (
+                <div
+                  key={section.local_id}
+                  className="overflow-hidden rounded-lg border bg-background"
+                >
+                  <div className="flex flex-wrap items-center gap-2 border-b bg-muted/30 px-2 py-1.5">
+                    <button
+                      type="button"
+                      onClick={() => toggleSection(section.local_id)}
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-muted"
+                      aria-label={collapsed ? "Expandir" : "Recolher"}
+                    >
+                      {collapsed ? (
+                        <ChevronRight className="h-4 w-4" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4" />
+                      )}
+                    </button>
+
+                    <Input
+                      value={section.title}
+                      onChange={(e) =>
                         updateSection(section.local_id, (s) => ({
                           ...s,
-                          columns: v,
+                          title: e.target.value,
                         }))
                       }
+                      placeholder="Título da seção"
+                      className="h-7 min-w-[12rem] flex-1 border-0 bg-transparent px-1 font-semibold uppercase tracking-wide shadow-none focus-visible:ring-0"
                     />
-                    <span className="text-xs text-muted-foreground">
-                      ({sectionFields.length})
-                    </span>
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      className="h-7 w-7 text-muted-foreground hover:text-destructive-foreground"
-                      onClick={() => deleteSection(section.local_id)}
-                      title="Excluir seção"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </div>
+                    <Input
+                      value={section.subtitle ?? ""}
+                      onChange={(e) =>
+                        updateSection(section.local_id, (s) => ({
+                          ...s,
+                          subtitle: e.target.value || null,
+                        }))
+                      }
+                      placeholder="Subtítulo (opcional)"
+                      className="hidden h-7 flex-1 border-0 bg-transparent px-1 italic text-muted-foreground shadow-none focus-visible:ring-0 md:block"
+                    />
 
-                {!collapsed ? (
-                  <div className="space-y-2 p-2">
-                    {sectionFields.length === 0 ? (
-                      <div className="rounded-md border border-dashed p-4 text-center text-xs text-muted-foreground">
-                        Sem campos nesta seção.
-                      </div>
-                    ) : (
-                      <DndContext
-                        sensors={sensors}
-                        collisionDetection={closestCenter}
-                        onDragEnd={(e) => handleDragEnd(section.local_id, e)}
+                    <div className="ml-auto flex items-center gap-1.5 pl-2">
+                      <ColumnsPicker
+                        value={section.columns}
+                        onChange={(v) =>
+                          updateSection(section.local_id, (s) => ({
+                            ...s,
+                            columns: v,
+                          }))
+                        }
+                      />
+                      <span className="text-xs text-muted-foreground">
+                        ({sectionFields.length})
+                      </span>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7 text-muted-foreground hover:text-destructive-foreground"
+                        onClick={() => deleteSection(section.local_id)}
+                        title="Excluir seção"
                       >
-                        <SortableContext
-                          items={sectionFields.map((f) => f.localId)}
-                          strategy={verticalListSortingStrategy}
-                        >
-                          <div className="space-y-1.5">
-                            {sectionFields.map((field) => (
-                              <FieldAccordionItem
-                                key={field.localId}
-                                field={field}
-                                sections={sections}
-                                allFields={fields}
-                                templateId={template.id}
-                                expanded={
-                                  expandedFieldLocalId === field.localId
-                                }
-                                autoFocusLabel={
-                                  justCreatedLocalId === field.localId
-                                }
-                                onToggle={() => toggleField(field.localId)}
-                                onChange={(updater) =>
-                                  updateField(field.localId, updater)
-                                }
-                                onDelete={() => deleteField(field.localId)}
-                                onMoveToSection={(secId) =>
-                                  moveField(field.localId, secId)
-                                }
-                              />
-                            ))}
-                          </div>
-                        </SortableContext>
-                      </DndContext>
-                    )}
-
-                    <AddFieldBar
-                      onAdd={(type) => addField(section.local_id, type)}
-                    />
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                   </div>
-                ) : null}
-              </div>
-            );
-          })}
-        </div>
+
+                  {!collapsed ? (
+                    <div className="space-y-2 p-2">
+                      {sectionFields.length === 0 ? (
+                        <div className="rounded-md border border-dashed p-4 text-center text-xs text-muted-foreground">
+                          Sem campos nesta seção.
+                        </div>
+                      ) : (
+                        <DndContext
+                          sensors={sensors}
+                          collisionDetection={closestCenter}
+                          onDragEnd={(e) => handleDragEnd(section.local_id, e)}
+                        >
+                          <SortableContext
+                            items={sectionFields.map((f) => f.localId)}
+                            strategy={verticalListSortingStrategy}
+                          >
+                            <div className="space-y-1.5">
+                              {sectionFields.map((field) => (
+                                <FieldAccordionItem
+                                  key={field.localId}
+                                  field={field}
+                                  sections={sections}
+                                  allFields={fields}
+                                  templateId={template.id}
+                                  expanded={expandedFieldLocalId === field.localId}
+                                  autoFocusLabel={justCreatedLocalId === field.localId}
+                                  onToggle={() => toggleField(field.localId)}
+                                  onChange={(updater) =>
+                                    updateField(field.localId, updater)
+                                  }
+                                  onDelete={() => deleteField(field.localId)}
+                                  onMoveToSection={(secId) =>
+                                    moveField(field.localId, secId)
+                                  }
+                                />
+                              ))}
+                            </div>
+                          </SortableContext>
+                        </DndContext>
+                      )}
+
+                      <AddFieldBar onAdd={(type) => addField(section.local_id, type)} />
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
         </Panel>
 
         <PanelResizeHandle className="group relative mx-1 hidden w-2 items-center justify-center lg:flex">
@@ -709,37 +711,42 @@ export function TemplateBuilder({
           </div>
         </PanelResizeHandle>
 
-        <Panel defaultSize={38} minSize={20} id="preview-panel" className="mt-4 !overflow-visible lg:mt-0 lg:!overflow-hidden">
-        <div className="lg:sticky lg:top-28 lg:self-start lg:pl-1">
-          <Card className="lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between gap-2">
-                <div className="min-w-0">
-                  <CardTitle className="truncate text-base">
-                    {name || "(sem título)"}
-                  </CardTitle>
-                  {description ? (
-                    <CardDescription className="truncate text-xs">
-                      {description}
-                    </CardDescription>
-                  ) : null}
+        <Panel
+          defaultSize={38}
+          minSize={20}
+          id="preview-panel"
+          className="mt-4 !overflow-visible lg:mt-0 lg:!overflow-hidden"
+        >
+          <div className="lg:sticky lg:top-28 lg:self-start lg:pl-1">
+            <Card className="lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <CardTitle className="truncate text-base">
+                      {name || "(sem título)"}
+                    </CardTitle>
+                    {description ? (
+                      <CardDescription className="truncate text-xs">
+                        {description}
+                      </CardDescription>
+                    ) : null}
+                  </div>
+                  <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                    Preview
+                  </span>
                 </div>
-                <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                  Preview
-                </span>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <PreviewBody
-                templateId={template.id}
-                previewSections={previewSections}
-                layoutMode={layoutMode}
-                environments={environments}
-                compact
-              />
-            </CardContent>
-          </Card>
-        </div>
+              </CardHeader>
+              <CardContent>
+                <PreviewBody
+                  templateId={template.id}
+                  previewSections={previewSections}
+                  layoutMode={layoutMode}
+                  environments={environments}
+                  compact
+                />
+              </CardContent>
+            </Card>
+          </div>
         </Panel>
       </PanelGroup>
 
@@ -791,8 +798,8 @@ export function TemplateBuilder({
           <DialogHeader>
             <DialogTitle>Apagar formulário?</DialogTitle>
             <DialogDescription>
-              Esta ação é permanente e não pode ser desfeita. Todos os campos e
-              seções deste formulário serão removidos.
+              Esta ação é permanente e não pode ser desfeita. Todos os campos e seções
+              deste formulário serão removidos.
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-end gap-2 pt-2">
@@ -943,16 +950,10 @@ function PreviewBody({
                 <div
                   key={f.localId}
                   style={{
-                    gridColumn: `span ${Math.min(
-                      f.column_span,
-                      section.columns,
-                    )}`,
+                    gridColumn: `span ${Math.min(f.column_span, section.columns)}`,
                   }}
                 >
-                  <FieldPreview
-                    field={previewField}
-                    hidden={Boolean(f.visible_when)}
-                  />
+                  <FieldPreview field={previewField} hidden={Boolean(f.visible_when)} />
                 </div>
               );
             })}

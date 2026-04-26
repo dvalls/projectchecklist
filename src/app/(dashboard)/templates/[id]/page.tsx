@@ -1,23 +1,14 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 
+import { BackLink } from "@/components/layout/back-link";
 import { createClient } from "@/lib/supabase/server";
-import type {
-  ClFormField,
-  ClFormSection,
-  ClFormTemplate,
-} from "@/lib/supabase/types";
+import type { ClFormField, ClFormSection, ClFormTemplate } from "@/lib/supabase/types";
 
 import { TemplateBuilder } from "@/components/form-builder/template-builder";
 
 export const dynamic = "force-dynamic";
 
-export default async function TemplateEditorPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default async function TemplateEditorPage({ params }: { params: { id: string } }) {
   const supabase = createClient();
 
   const { data: template } = await supabase
@@ -44,13 +35,9 @@ export default async function TemplateEditorPage({
   return (
     <div className="space-y-6">
       <div>
-        <Link
-          href={`/projects/${(template as ClFormTemplate).project_id}`}
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-4 w-4" />
+        <BackLink href={`/projects/${(template as ClFormTemplate).project_id}`}>
           Voltar para o projeto
-        </Link>
+        </BackLink>
       </div>
 
       <TemplateBuilder

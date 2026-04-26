@@ -51,7 +51,9 @@ function buildSocialUrl(
   }
 }
 
-function buildSocialLinks(officeSettings: Partial<PublicOfficeSettings> | null): SocialLink[] {
+function buildSocialLinks(
+  officeSettings: Partial<PublicOfficeSettings> | null,
+): SocialLink[] {
   if (!officeSettings) return [];
   const entries: Array<{
     type: "instagram" | "facebook" | "linkedin" | "twitter" | "whatsapp" | "website";
@@ -59,11 +61,36 @@ function buildSocialLinks(officeSettings: Partial<PublicOfficeSettings> | null):
     label: string;
     icon: ElementType;
   }> = [
-    { type: "instagram", value: officeSettings.instagram, label: "Instagram", icon: Instagram },
-    { type: "facebook", value: officeSettings.facebook, label: "Facebook", icon: Facebook },
-    { type: "linkedin", value: officeSettings.linkedin, label: "LinkedIn", icon: Linkedin },
-    { type: "twitter", value: officeSettings.twitter, label: "Twitter / X", icon: Twitter },
-    { type: "whatsapp", value: officeSettings.whatsapp, label: "WhatsApp", icon: MessageCircle },
+    {
+      type: "instagram",
+      value: officeSettings.instagram,
+      label: "Instagram",
+      icon: Instagram,
+    },
+    {
+      type: "facebook",
+      value: officeSettings.facebook,
+      label: "Facebook",
+      icon: Facebook,
+    },
+    {
+      type: "linkedin",
+      value: officeSettings.linkedin,
+      label: "LinkedIn",
+      icon: Linkedin,
+    },
+    {
+      type: "twitter",
+      value: officeSettings.twitter,
+      label: "Twitter / X",
+      icon: Twitter,
+    },
+    {
+      type: "whatsapp",
+      value: officeSettings.whatsapp,
+      label: "WhatsApp",
+      icon: MessageCircle,
+    },
     { type: "website", value: officeSettings.website, label: "Site", icon: Globe },
   ];
   return entries
@@ -89,9 +116,11 @@ export function PublicFooter({ officeSettings }: PublicFooterProps) {
   return (
     <footer className="shrink-0 border-t bg-background">
       <div className="mx-auto flex min-h-16 max-w-5xl flex-col items-center justify-center gap-3 px-4 py-4 text-center sm:flex-row sm:justify-between sm:text-left">
-        {officeName && (
-          <p className="text-sm font-medium text-muted-foreground">{officeName}</p>
-        )}
+        <div className="flex flex-col items-center gap-2 sm:flex-row sm:gap-4">
+          {officeName && (
+            <p className="text-sm font-medium text-muted-foreground">{officeName}</p>
+          )}
+        </div>
         {socials.length > 0 && (
           <div className="flex flex-wrap items-center justify-center gap-4">
             {socials.map(({ href, label, icon: Icon }) => (

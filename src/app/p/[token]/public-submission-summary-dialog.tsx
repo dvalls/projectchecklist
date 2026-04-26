@@ -4,18 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import { FileText, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { ClFormSection } from "@/lib/supabase/types";
 
-import {
-  getPublicSubmissionSummary,
-  type PublicSubmissionSummary,
-} from "./actions";
+import { getPublicSubmissionSummary, type PublicSubmissionSummary } from "./actions";
 import { DownloadSubmissionPdfButton } from "./pdf/download-buttons";
 import { formatDateTime, formatFieldValue } from "./pdf/format-value";
 
@@ -100,11 +92,13 @@ export function PublicSubmissionSummaryDialog({
                 Carregando...
               </div>
             ) : error ? (
-              <p className="py-8 text-center text-sm text-destructive">
-                {error}
-              </p>
+              <p className="py-8 text-center text-sm text-destructive">{error}</p>
             ) : summary ? (
-              <SummaryContent summary={summary} fallbackName={clientName} fallbackTemplate={templateName} />
+              <SummaryContent
+                summary={summary}
+                fallbackName={clientName}
+                fallbackTemplate={templateName}
+              />
             ) : null}
           </div>
         </DialogContent>
@@ -122,8 +116,7 @@ function SummaryContent({
   fallbackName: string | null;
   fallbackTemplate: string;
 }) {
-  const { submission, template, sections, fields, values, matrixValues } =
-    summary;
+  const { submission, template, sections, fields, values, matrixValues } = summary;
 
   const valuesByField = new Map(values.map((v) => [v.field_id, v] as const));
   const matrixByKey = new Map(
@@ -174,7 +167,7 @@ function SummaryContent({
         return (
           <section key={section.id} className="space-y-2">
             {section.title ? (
-              <div className="inline-block bg-foreground px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-background">
+              <div className="text-sm font-semibold uppercase tracking-wide text-foreground">
                 {section.title}
               </div>
             ) : null}
@@ -183,19 +176,13 @@ function SummaryContent({
               {visible.map((field) => {
                 if (isMatrix) {
                   return (
-                    <div
-                      key={field.id}
-                      className="rounded-md border p-3 text-sm"
-                    >
+                    <div key={field.id} className="rounded-md border p-3 text-sm">
                       <div className="font-medium">{field.label}</div>
                       <dl className="mt-2 grid gap-1 text-xs">
                         {environments.map((env) => {
                           const v = matrixByKey.get(`${field.id}::${env}`);
                           return (
-                            <div
-                              key={env}
-                              className="flex items-baseline gap-2"
-                            >
+                            <div key={env} className="flex items-baseline gap-2">
                               <dt className="w-28 shrink-0 font-medium uppercase tracking-wide text-muted-foreground">
                                 {env}
                               </dt>
@@ -219,12 +206,12 @@ function SummaryContent({
                 return (
                   <div
                     key={field.id}
-                    className="grid grid-cols-[140px_1fr] items-baseline gap-3 rounded-md border p-3 text-sm sm:grid-cols-[200px_1fr]"
+                    className="grid grid-cols-[140px_1fr] items-baseline gap-3 rounded-md border px-3 py-1.5 text-sm sm:grid-cols-[200px_1fr]"
                   >
                     <dt className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                       {field.label}
                     </dt>
-                    <dd>
+                    <dd className="leading-tight">
                       {formatFieldValue(field, v?.value ?? null)}
                       {v?.image_url ? (
                         <span className="ml-2 text-xs text-muted-foreground">

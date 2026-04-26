@@ -3,12 +3,7 @@
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 
 import { updateProjectAllowResubmit } from "./actions";
@@ -32,9 +27,7 @@ export function ProjectBehaviorSettings({ projectId, initialAllow }: Props) {
         toast.error(res.error);
       } else {
         toast.success(
-          next
-            ? "Novo preenchimento permitido."
-            : "Respostas herdadas serão bloqueadas.",
+          next ? "Novo preenchimento permitido." : "Respostas herdadas serão bloqueadas.",
         );
       }
     });
@@ -45,8 +38,8 @@ export function ProjectBehaviorSettings({ projectId, initialAllow }: Props) {
       <CardHeader>
         <CardTitle>Comportamento do preenchimento público</CardTitle>
         <p className="text-sm text-muted-foreground">
-          Define como os itens já respondidos em preenchimentos anteriores
-          aparecem para novos clientes no link público.
+          Define como os itens já respondidos em preenchimentos anteriores aparecem para
+          novos clientes no link público.
         </p>
       </CardHeader>
       <CardContent>
@@ -59,10 +52,9 @@ export function ProjectBehaviorSettings({ projectId, initialAllow }: Props) {
               Permitir novo preenchimento de itens já respondidos
             </div>
             <p className="text-xs text-muted-foreground">
-              Quando desligado, os campos já preenchidos em submissões
-              anteriores aparecem bloqueados (apenas leitura) para o próximo
-              cliente, herdando o último valor. Quando ligado, o cliente pode
-              sobrescrever os valores anteriores.
+              Quando desligado, os campos já preenchidos em submissões anteriores aparecem
+              bloqueados (apenas leitura) para o próximo cliente, herdando o último valor.
+              Quando ligado, o cliente pode sobrescrever os valores anteriores.
             </p>
           </div>
           <Switch

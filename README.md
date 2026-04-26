@@ -24,6 +24,22 @@ cp .env.example .env.local
 npm run dev
 ```
 
+## Scripts
+
+```bash
+npm run dev          # servidor de desenvolvimento
+npm run lint         # ESLint
+npm run typecheck    # tsc --noEmit
+npm run format       # Prettier (write)
+npm run format:check # Prettier (check)
+npm run check        # lint + format:check + typecheck
+```
+
+## Tipos do banco
+
+Para gerar tipos a partir do schema Supabase, veja
+[AGENTS.md](AGENTS.md#tipos-do-banco-supabase).
+
 ## Estrutura
 
 ```

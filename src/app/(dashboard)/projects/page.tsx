@@ -2,6 +2,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { FolderKanban, ImageIcon, Plus } from "lucide-react";
 
+import { BUCKETS } from "@/lib/constants";
+import { getPublicBucketBaseUrl } from "@/lib/storage";
 import { createClient } from "@/lib/supabase/server";
 
 import { Button } from "@/components/ui/button";
@@ -9,20 +11,14 @@ import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/layout/empty-state";
 import { PageHeader } from "@/components/layout/page-header";
 
-import type {
-  ClFormSubmission,
-  ClFormTemplate,
-} from "@/lib/supabase/types";
+import type { ClFormSubmission, ClFormTemplate } from "@/lib/supabase/types";
 
-import { NewProjectDialog } from "./new-project-dialog";
 import { ProjectCardMenu } from "./project-card-menu";
 import { ProjectPublicSubmissionsDialog } from "./project-public-submissions-dialog";
 
 export const dynamic = "force-dynamic";
 
-const BUCKET = "checklist-images";
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
-const storageBaseUrl = `${supabaseUrl}/storage/v1/object/public/${BUCKET}`;
+const storageBaseUrl = getPublicBucketBaseUrl(BUCKETS.CHECKLIST_IMAGES);
 
 export default async function ProjectsPage() {
   const supabase = createClient();
@@ -43,10 +39,7 @@ export default async function ProjectsPage() {
           .order("created_at", { ascending: false })
       : Promise.resolve({ data: [] as ClFormSubmission[] }),
     projectIds.length > 0
-      ? supabase
-          .from("cl_form_templates")
-          .select("*")
-          .in("project_id", projectIds)
+      ? supabase.from("cl_form_templates").select("*").in("project_id", projectIds)
       : Promise.resolve({ data: [] as ClFormTemplate[] }),
   ]);
 
@@ -70,14 +63,12 @@ export default async function ProjectsPage() {
         title="Projetos"
         description="Organize checklists e formulários por projeto."
         actions={
-          <NewProjectDialog
-            trigger={
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                Novo projeto
-              </Button>
-            }
-          />
+          <Button asChild>
+            <Link href="/projects/new">
+              <Plus className="mr-2 h-4 w-4" />
+              Novo projeto
+            </Link>
+          </Button>
         }
       />
 
@@ -87,21 +78,18 @@ export default async function ProjectsPage() {
           title="Nenhum projeto ainda"
           description="Crie seu primeiro projeto para começar a organizar checklists e formulários."
           action={
-            <NewProjectDialog
-              trigger={
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Criar primeiro projeto
-                </Button>
-              }
-            />
+            <Button asChild>
+              <Link href="/projects/new">
+                <Plus className="mr-2 h-4 w-4" />
+                Criar primeiro projeto
+              </Link>
+            </Button>
           }
         />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {projects.map((project) => {
-            const projectSubmissions =
-              submissionsByProject.get(project.id) ?? [];
+            const projectSubmissions = submissionsByProject.get(project.id) ?? [];
             const projectTemplates = templatesByProject.get(project.id) ?? [];
             const visibleTemplates = projectTemplates.slice(0, 3);
             const hiddenTemplatesCount =
@@ -112,10 +100,7 @@ export default async function ProjectsPage() {
                 className="group flex h-full flex-col overflow-hidden transition-colors hover:border-primary/40"
               >
                 <div className="relative flex flex-1 flex-col">
-                  <Link
-                    href={`/projects/${project.id}`}
-                    className="flex flex-1 flex-col"
-                  >
+                  <Link href={`/projects/${project.id}`} className="flex flex-1 flex-col">
                     <div className="relative h-28 w-full shrink-0 overflow-hidden bg-gradient-to-br from-primary/10 to-muted">
                       {project.image_url ? (
                         <Image
@@ -168,10 +153,7 @@ export default async function ProjectsPage() {
                     </div>
                   </Link>
                   <div className="absolute right-2 top-2 z-10">
-                    <ProjectCardMenu
-                      projectId={project.id}
-                      projectName={project.name}
-                    />
+                    <ProjectCardMenu projectId={project.id} projectName={project.name} />
                   </div>
                 </div>
                 <div className="border-t px-6 py-3">

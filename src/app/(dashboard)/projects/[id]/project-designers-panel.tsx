@@ -6,12 +6,7 @@ import { ArrowDown, ArrowUp, User, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -92,9 +87,7 @@ export function ProjectDesignersPanel({
       </CardHeader>
       <CardContent className="space-y-4">
         {selected.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            Nenhum projetista associado.
-          </p>
+          <p className="text-sm text-muted-foreground">Nenhum projetista associado.</p>
         ) : (
           <div className="space-y-2">
             {selected.map((id, i) => {
@@ -102,10 +95,7 @@ export function ProjectDesignersPanel({
               if (!d) return null;
               const photo = resolvePhoto(d.photo_url);
               return (
-                <div
-                  key={id}
-                  className="flex items-center gap-3 rounded-md border p-2"
-                >
+                <div key={id} className="flex items-center gap-3 rounded-md border p-2">
                   <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full border bg-muted">
                     {photo ? (
                       // eslint-disable-next-line @next/next/no-img-element

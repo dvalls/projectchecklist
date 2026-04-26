@@ -10,28 +10,36 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
+import { getInitialsFromEmail } from "@/lib/format";
 
 import { signOut } from "@/app/(auth)/login/actions";
 
-export function Topbar({ userEmail }: { userEmail: string }) {
-  const initials =
-    userEmail
-      .split("@")[0]
-      ?.split(/[._-]/)
-      .map((p) => p[0]?.toUpperCase())
-      .slice(0, 2)
-      .join("") || "?";
+export function Topbar({
+  userEmail,
+  officeName,
+}: {
+  userEmail: string;
+  officeName: string | null;
+}) {
+  const initials = getInitialsFromEmail(userEmail);
 
   return (
     <header className="sticky top-0 z-10 flex h-14 items-center gap-3 border-b bg-background px-3 sm:h-16 sm:px-6">
       <Button asChild variant="ghost" className="-ml-2 h-10 px-2">
         <Link href="/" className="flex items-center gap-2">
           <ClipboardCheck className="h-6 w-6 text-primary" />
-          <span className="font-semibold tracking-tight">ProjectChecklist</span>
+          <div className="flex flex-col leading-tight">
+            <span className="font-semibold tracking-tight">ProjectChecklist</span>
+            {officeName && (
+              <span className="text-xs text-muted-foreground">{officeName}</span>
+            )}
+          </div>
         </Link>
       </Button>
 
       <div className="ml-auto flex items-center gap-2">
+        <ThemeToggle />
         <Button asChild variant="ghost" size="icon">
           <Link href="/settings" aria-label="Configurações" title="Configurações">
             <Settings className="h-5 w-5" />
@@ -40,10 +48,7 @@ export function Topbar({ userEmail }: { userEmail: string }) {
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              className="flex h-10 min-w-0 items-center gap-2 px-2"
-            >
+            <Button variant="ghost" className="flex h-10 min-w-0 items-center gap-2 px-2">
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
                 {initials}
               </div>

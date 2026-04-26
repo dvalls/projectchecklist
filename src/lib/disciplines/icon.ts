@@ -86,9 +86,7 @@ export function getDisciplineIcon(name: string | null | undefined): LucideIcon {
   return Shapes;
 }
 
-export function getDisciplineIconByName(
-  iconName: string | null | undefined,
-): LucideIcon {
+export function getDisciplineIconByName(iconName: string | null | undefined): LucideIcon {
   if (!iconName) return Shapes;
   return DISCIPLINE_ICONS.find((e) => e.name === iconName)?.icon ?? Shapes;
 }

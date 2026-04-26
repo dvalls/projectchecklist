@@ -16,19 +16,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EmptyState } from "@/components/layout/empty-state";
 
 import type { ClDiscipline } from "@/lib/supabase/types";
-import {
-  DISCIPLINE_ICONS,
-  resolveDisciplineIcon,
-} from "@/lib/disciplines/icon";
+import { DISCIPLINE_ICONS, resolveDisciplineIcon } from "@/lib/disciplines/icon";
 
-import {
-  createDiscipline,
-  deleteDiscipline,
-  updateDiscipline,
-} from "./actions";
+import { createDiscipline, deleteDiscipline, updateDiscipline } from "./actions";
 
 const PALETTE = [
   "#3b82f6",
@@ -69,24 +63,15 @@ export function DisciplinesManager({ initialDisciplines }: Props) {
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {initialDisciplines.map((d) => (
-            <DisciplineCard
-              key={d.id}
-              discipline={d}
-              onEdit={() => setEditing(d)}
-            />
+            <DisciplineCard key={d.id} discipline={d} onEdit={() => setEditing(d)} />
           ))}
         </div>
       )}
 
-      {creating ? (
-        <DisciplineDialog onClose={() => setCreating(false)} />
-      ) : null}
+      {creating ? <DisciplineDialog onClose={() => setCreating(false)} /> : null}
 
       {editing ? (
-        <DisciplineDialog
-          discipline={editing}
-          onClose={() => setEditing(null)}
-        />
+        <DisciplineDialog discipline={editing} onClose={() => setEditing(null)} />
       ) : null}
     </>
   );
@@ -111,12 +96,7 @@ function DisciplineCard({
           <Icon className="h-5 w-5" />
         </span>
         <div className="flex-1 truncate font-medium">{discipline.name}</div>
-        <Button
-          size="icon"
-          variant="ghost"
-          className="h-7 w-7"
-          onClick={onEdit}
-        >
+        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onEdit}>
           <Pencil className="h-3.5 w-3.5" />
         </Button>
         <DeleteButton discipline={discipline} />
@@ -129,7 +109,6 @@ function DeleteButton({ discipline }: { discipline: ClDiscipline }) {
   const [isPending, startTransition] = useTransition();
 
   function handleDelete() {
-    if (!confirm(`Remover a disciplina "${discipline.name}"?`)) return;
     startTransition(async () => {
       const res = await deleteDiscipline(discipline.id);
       if (res.error) toast.error(res.error);
@@ -138,15 +117,24 @@ function DeleteButton({ discipline }: { discipline: ClDiscipline }) {
   }
 
   return (
-    <Button
-      size="icon"
-      variant="ghost"
-      className="h-7 w-7 text-muted-foreground hover:text-destructive"
-      onClick={handleDelete}
-      disabled={isPending}
-    >
-      <Trash2 className="h-3.5 w-3.5" />
-    </Button>
+    <ConfirmDialog
+      destructive
+      title={`Remover a disciplina "${discipline.name}"?`}
+      description="Esta ação não pode ser desfeita."
+      confirmLabel="Remover"
+      onConfirm={handleDelete}
+      trigger={
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-7 w-7 text-muted-foreground hover:text-destructive"
+          disabled={isPending}
+          aria-label={`Remover disciplina ${discipline.name}`}
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </Button>
+      }
+    />
   );
 }
 
@@ -186,9 +174,8 @@ function DisciplineDialog({
             {discipline ? "Editar disciplina" : "Nova disciplina"}
           </DialogTitle>
           <DialogDescription>
-            Disciplinas agrupam formulários por área (ex: Arquitetura,
-            Estrutural, Elétrica). Elas são compartilhadas entre todos os
-            projetos.
+            Disciplinas agrupam formulários por área (ex: Arquitetura, Estrutural,
+            Elétrica). Elas são compartilhadas entre todos os projetos.
           </DialogDescription>
         </DialogHeader>
 
@@ -201,7 +188,7 @@ function DisciplineDialog({
             >
               <PreviewIcon className="h-5 w-5" />
             </span>
-            <span className="font-medium text-sm text-muted-foreground">
+            <span className="text-sm font-medium text-muted-foreground">
               {name || "Nome da disciplina"}
             </span>
           </div>
@@ -235,11 +222,8 @@ function DisciplineDialog({
                         : {}
                     }
                   >
-                    <EntryIcon
-                      className="h-5 w-5"
-                      style={isSelected ? { color } : {}}
-                    />
-                    <span className="text-[10px] text-muted-foreground leading-tight text-center">
+                    <EntryIcon className="h-5 w-5" style={isSelected ? { color } : {}} />
+                    <span className="text-center text-[10px] leading-tight text-muted-foreground">
                       {entry.label}
                     </span>
                     {isSelected && (
@@ -267,8 +251,7 @@ function DisciplineDialog({
                   className="h-8 w-8 rounded-full border-2 transition-transform hover:scale-110"
                   style={{
                     backgroundColor: c,
-                    borderColor:
-                      c === color ? "hsl(var(--foreground))" : "transparent",
+                    borderColor: c === color ? "hsl(var(--foreground))" : "transparent",
                   }}
                   aria-label={`Cor ${c}`}
                 />

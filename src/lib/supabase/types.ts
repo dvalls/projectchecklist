@@ -218,19 +218,13 @@ export type Database = {
       };
       cl_form_submissions: {
         Row: ClFormSubmission;
-        Insert: WithDefaults<
-          ClFormSubmission,
-          "project_id" | "template_id"
-        >;
+        Insert: WithDefaults<ClFormSubmission, "project_id" | "template_id">;
         Update: Partial<ClFormSubmission>;
         Relationships: Relationships;
       };
       cl_public_links: {
         Row: ClPublicLink;
-        Insert: WithDefaults<
-          ClPublicLink,
-          "token" | "project_id" | "created_by"
-        >;
+        Insert: WithDefaults<ClPublicLink, "token" | "project_id" | "created_by">;
         Update: Partial<ClPublicLink>;
         Relationships: Relationships;
       };
@@ -242,10 +236,7 @@ export type Database = {
       };
       cl_project_designers: {
         Row: ClProjectDesigner;
-        Insert: WithDefaults<
-          ClProjectDesigner,
-          "project_id" | "designer_id"
-        >;
+        Insert: WithDefaults<ClProjectDesigner, "project_id" | "designer_id">;
         Update: Partial<ClProjectDesigner>;
         Relationships: Relationships;
       };
@@ -257,10 +248,7 @@ export type Database = {
       };
       cl_submission_values: {
         Row: ClSubmissionValue;
-        Insert: WithDefaults<
-          ClSubmissionValue,
-          "submission_id" | "field_id"
-        >;
+        Insert: WithDefaults<ClSubmissionValue, "submission_id" | "field_id">;
         Update: Partial<ClSubmissionValue>;
         Relationships: Relationships;
       };

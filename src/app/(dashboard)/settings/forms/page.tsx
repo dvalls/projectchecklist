@@ -17,10 +17,7 @@ export default async function TemplatesPage() {
 
   return (
     <div>
-      <PageHeader
-        title="Formulários"
-        description="Todos os formulários do sistema."
-      />
+      <PageHeader title="Formulários" description="Todos os formulários do sistema." />
 
       {!templates || templates.length === 0 ? (
         <EmptyState
@@ -31,12 +28,16 @@ export default async function TemplatesPage() {
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {templates.map((t) => {
-            const project = (t as unknown as {
-              cl_projects: { name: string } | null;
-            }).cl_projects;
-            const discipline = (t as unknown as {
-              cl_disciplines: { name: string; color: string } | null;
-            }).cl_disciplines;
+            const project = (
+              t as unknown as {
+                cl_projects: { name: string } | null;
+              }
+            ).cl_projects;
+            const discipline = (
+              t as unknown as {
+                cl_disciplines: { name: string; color: string } | null;
+              }
+            ).cl_disciplines;
             return (
               <TemplateCard
                 key={t.id}

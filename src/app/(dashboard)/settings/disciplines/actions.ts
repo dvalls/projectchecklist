@@ -2,18 +2,18 @@
 
 import { revalidatePath } from "next/cache";
 
+import { disciplineInputSchema, type DisciplineInput } from "@/lib/schemas/disciplines";
+import { fail, ok } from "@/lib/server-action";
 import { createClient } from "@/lib/supabase/server";
 
-export interface DisciplineInput {
-  name: string;
-  color: string;
-  icon?: string | null;
-}
+export type { DisciplineInput };
 
 export async function createDiscipline(input: DisciplineInput) {
-  const name = input.name.trim();
-  const color = input.color || "#3b82f6";
-  if (!name) return { error: "Nome é obrigatório." };
+  const parsed = disciplineInputSchema.safeParse(input);
+  if (!parsed.success) {
+    return fail(parsed.error.issues[0]?.message ?? "Dados inválidos.");
+  }
+  const { name, color, icon } = parsed.data;
 
   const supabase = createClient();
 
@@ -24,52 +24,51 @@ export async function createDiscipline(input: DisciplineInput) {
   const { error } = await supabase.from("cl_disciplines").insert({
     name,
     color,
-    icon: input.icon ?? null,
+    icon: icon ?? null,
     position: count ?? 0,
   });
 
   if (error) {
     if (error.code === "23505") {
-      return { error: "Já existe uma disciplina com este nome." };
+      return fail("Já existe uma disciplina com este nome.");
     }
-    return { error: error.message };
+    return fail(error.message);
   }
 
   revalidatePath("/settings/disciplines");
-  return { success: true };
+  return ok();
 }
 
 export async function updateDiscipline(id: string, input: DisciplineInput) {
-  const name = input.name.trim();
-  const color = input.color || "#3b82f6";
-  if (!name) return { error: "Nome é obrigatório." };
+  const parsed = disciplineInputSchema.safeParse(input);
+  if (!parsed.success) {
+    return fail(parsed.error.issues[0]?.message ?? "Dados inválidos.");
+  }
+  const { name, color, icon } = parsed.data;
 
   const supabase = createClient();
   const { error } = await supabase
     .from("cl_disciplines")
-    .update({ name, color, icon: input.icon ?? null })
+    .update({ name, color, icon: icon ?? null })
     .eq("id", id);
 
   if (error) {
     if (error.code === "23505") {
-      return { error: "Já existe uma disciplina com este nome." };
+      return fail("Já existe uma disciplina com este nome.");
     }
-    return { error: error.message };
+    return fail(error.message);
   }
 
   revalidatePath("/settings/disciplines");
-  return { success: true };
+  return ok();
 }
 
 export async function deleteDiscipline(id: string) {
   const supabase = createClient();
-  const { error } = await supabase
-    .from("cl_disciplines")
-    .delete()
-    .eq("id", id);
+  const { error } = await supabase.from("cl_disciplines").delete().eq("id", id);
 
-  if (error) return { error: error.message };
+  if (error) return fail(error.message);
 
   revalidatePath("/settings/disciplines");
-  return { success: true };
+  return ok();
 }

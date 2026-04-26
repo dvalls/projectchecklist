@@ -67,9 +67,7 @@ export function LoginForm() {
               id="password"
               name="password"
               type="password"
-              autoComplete={
-                mode === "login" ? "current-password" : "new-password"
-              }
+              autoComplete={mode === "login" ? "current-password" : "new-password"}
               minLength={6}
               required
               placeholder="••••••••"
@@ -78,20 +76,14 @@ export function LoginForm() {
         </CardContent>
         <CardFooter className="flex flex-col gap-3">
           <Button type="submit" className="w-full" disabled={isPending}>
-            {isPending
-              ? "Aguarde..."
-              : mode === "login"
-                ? "Entrar"
-                : "Criar conta"}
+            {isPending ? "Aguarde..." : mode === "login" ? "Entrar" : "Criar conta"}
           </Button>
           <button
             type="button"
             onClick={() => setMode(mode === "login" ? "signup" : "login")}
             className="text-sm text-muted-foreground hover:text-foreground"
           >
-            {mode === "login"
-              ? "Não tem conta? Criar conta"
-              : "Já tem conta? Entrar"}
+            {mode === "login" ? "Não tem conta? Criar conta" : "Já tem conta? Entrar"}
           </button>
         </CardFooter>
       </form>

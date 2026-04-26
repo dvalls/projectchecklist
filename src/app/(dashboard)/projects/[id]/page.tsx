@@ -1,14 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import {
-  ArrowLeft,
-  Copy,
-  FileText,
-  Plus,
-  Settings,
-  User,
-} from "lucide-react";
+import { Copy, FileText, Plus, Settings, User } from "lucide-react";
 
+import { BackLink } from "@/components/layout/back-link";
+import { BUCKETS } from "@/lib/constants";
+import { getPublicBucketBaseUrl } from "@/lib/storage";
 import { createClient } from "@/lib/supabase/server";
 import type {
   ClDesigner,
@@ -21,6 +17,7 @@ import type {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { EmptyState } from "@/components/layout/empty-state";
 import { NewTemplateDialog } from "./templates/new-template-dialog";
 import {
   ImportExistingTemplateDialog,
@@ -28,15 +25,9 @@ import {
 } from "./templates/import-existing-dialog";
 import { ProjectPublicLinkDialog } from "./project-public-link-dialog";
 
-const BUCKET = "checklist-images";
-
 export const dynamic = "force-dynamic";
 
-export default async function ProjectDetailPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default async function ProjectDetailPage({ params }: { params: { id: string } }) {
   const supabase = createClient();
 
   const { data: project } = await supabase
@@ -63,9 +54,7 @@ export default async function ProjectDetailPage({
       .order("created_at", { ascending: false }),
     supabase
       .from("cl_form_templates")
-      .select(
-        "id, name, project_id, cl_projects(name), cl_disciplines(name, color)",
-      )
+      .select("id, name, project_id, cl_projects(name), cl_disciplines(name, color)")
       .neq("project_id", params.id)
       .order("created_at", { ascending: false }),
     supabase
@@ -95,8 +84,7 @@ export default async function ProjectDetailPage({
     .map((pd) => byDesignerId.get(pd.designer_id))
     .filter(Boolean) as ClDesigner[];
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
-  const publicBaseUrl = `${supabaseUrl}/storage/v1/object/public/${BUCKET}`;
+  const publicBaseUrl = getPublicBucketBaseUrl(BUCKETS.CHECKLIST_IMAGES);
 
   const importableTemplates: ImportableTemplate[] = (
     (otherTemplates ?? []) as unknown as {
@@ -120,21 +108,13 @@ export default async function ProjectDetailPage({
   return (
     <div className="space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <Link
-            href="/projects"
-            className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" />
+        <div className="min-w-0">
+          <BackLink href="/projects" className="mb-4">
             Voltar para projetos
-          </Link>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            {project.name}
-          </h1>
+          </BackLink>
+          <h1 className="text-2xl font-semibold tracking-tight">{project.name}</h1>
           {project.description ? (
-            <p className="mt-1 text-sm text-muted-foreground">
-              {project.description}
-            </p>
+            <p className="mt-1 text-sm text-muted-foreground">{project.description}</p>
           ) : null}
         </div>
         <div className="flex items-center gap-2">
@@ -185,20 +165,16 @@ export default async function ProjectDetailPage({
         {templates && templates.length > 0 ? (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {templates.map((t) => {
-              const discipline = (t as unknown as {
-                cl_disciplines: { name: string; color: string } | null;
-              }).cl_disciplines;
+              const discipline = (
+                t as unknown as {
+                  cl_disciplines: { name: string; color: string } | null;
+                }
+              ).cl_disciplines;
               return (
-                <Link
-                  key={t.id}
-                  href={`/templates/${t.id}`}
-                  className="block"
-                >
+                <Link key={t.id} href={`/templates/${t.id}`} className="block">
                   <Card className="h-full transition-colors hover:border-primary/40">
                     <CardHeader className="pb-3">
-                      <CardTitle className="line-clamp-1 text-base">
-                        {t.name}
-                      </CardTitle>
+                      <CardTitle className="line-clamp-1 text-base">{t.name}</CardTitle>
                     </CardHeader>
                     <CardContent>
                       {discipline ? (
@@ -221,9 +197,11 @@ export default async function ProjectDetailPage({
             })}
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">
-            Nenhum formulário criado.
-          </p>
+          <EmptyState
+            icon={<FileText className="h-5 w-5" />}
+            title="Nenhum formulário criado"
+            description="Crie um formulário ou importe um existente para começar."
+          />
         )}
       </section>
 
@@ -235,9 +213,7 @@ export default async function ProjectDetailPage({
           </div>
           <div className="flex flex-wrap gap-4">
             {orderedDesigners.map((d) => {
-              const photo = d.photo_url
-                ? `${publicBaseUrl}/${d.photo_url}`
-                : null;
+              const photo = d.photo_url ? `${publicBaseUrl}/${d.photo_url}` : null;
               return (
                 <div
                   key={d.id}
@@ -258,7 +234,9 @@ export default async function ProjectDetailPage({
                     )}
                   </div>
                   <div className="w-full">
-                    <div className="break-words text-sm font-medium leading-tight">{d.name}</div>
+                    <div className="break-words text-sm font-medium leading-tight">
+                      {d.name}
+                    </div>
                     {d.role ? (
                       <div className="mt-0.5 break-words text-xs text-muted-foreground">
                         {d.role}

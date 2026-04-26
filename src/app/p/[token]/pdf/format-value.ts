@@ -1,3 +1,4 @@
+import { formatDateTime as baseFormatDateTime } from "@/lib/format";
 import type { ClFormField, FieldOptions } from "@/lib/supabase/types";
 
 export function formatFieldValue(field: ClFormField, raw: string | null): string {
@@ -33,13 +34,5 @@ export function formatFieldValue(field: ClFormField, raw: string | null): string
 }
 
 export function formatDateTime(iso: string | null): string {
-  if (!iso) return "—";
-  try {
-    return new Date(iso).toLocaleString("pt-BR", {
-      dateStyle: "short",
-      timeStyle: "short",
-    });
-  } catch {
-    return iso;
-  }
+  return baseFormatDateTime(iso) || "—";
 }

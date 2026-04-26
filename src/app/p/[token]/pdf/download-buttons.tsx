@@ -5,6 +5,8 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { BUCKETS } from "@/lib/constants";
+import { getPublicBucketBaseUrl } from "@/lib/storage";
 
 import {
   getPublicFullReport,
@@ -13,11 +15,8 @@ import {
   type PublicSubmissionSummary,
 } from "../actions";
 
-const BUCKET = "checklist-images";
-
 function getPublicBaseUrl() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
-  return `${supabaseUrl}/storage/v1/object/public/${BUCKET}`;
+  return getPublicBucketBaseUrl(BUCKETS.CHECKLIST_IMAGES);
 }
 
 function slugify(input: string): string {
@@ -126,9 +125,7 @@ export function DownloadSubmissionPdfButton({
       ].filter(Boolean);
       await downloadBlob(blob, `${parts.join("-")}.pdf`);
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Erro ao gerar PDF.",
-      );
+      toast.error(err instanceof Error ? err.message : "Erro ao gerar PDF.");
     } finally {
       setLoading(false);
     }
@@ -190,9 +187,7 @@ export function DownloadFullReportButton({
       const filename = `relatorio-${slugify(projectName) || "checklist"}.pdf`;
       await downloadBlob(blob, filename);
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Erro ao gerar PDF.",
-      );
+      toast.error(err instanceof Error ? err.message : "Erro ao gerar PDF.");
     } finally {
       setLoading(false);
     }

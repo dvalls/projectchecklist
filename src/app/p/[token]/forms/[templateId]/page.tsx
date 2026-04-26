@@ -1,17 +1,18 @@
 import { notFound } from "next/navigation";
 
+import { OFFICE_PUBLIC_FIELDS } from "@/lib/constants";
+import { getActivePublicLink } from "@/lib/public-link";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import type {
   ClFormField,
   ClFormSection,
   ClFormTemplate,
-  ClProject,
-  ClPublicLink,
   ClSubmissionValue,
   ClSubmissionValueMatrix,
 } from "@/lib/supabase/types";
 import type { PublicOfficeSettings } from "../../public-footer";
 
+import { InactiveLinkCard } from "../../inactive-link-card";
 import {
   PublicFillWrapper,
   type PreviousFieldValue,
@@ -26,29 +27,14 @@ export default async function PublicFormFillPage({
 }: {
   params: { token: string; templateId: string };
 }) {
-  const supabase = createServiceRoleClient();
-
-  const { data: link } = await supabase
-    .from("cl_public_links")
-    .select("*")
-    .eq("token", params.token)
-    .maybeSingle();
-
-  if (!link) notFound();
-  const typedLink = link as ClPublicLink;
-
-  if (!typedLink.is_active) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-muted/30 p-6">
-        <div className="max-w-md space-y-3 rounded-lg border bg-background p-8 text-center shadow-sm">
-          <h1 className="text-lg font-semibold">Link indisponível</h1>
-          <p className="text-sm text-muted-foreground">
-            Este link foi desativado pelo responsável.
-          </p>
-        </div>
-      </div>
-    );
+  const lookup = await getActivePublicLink(params.token);
+  if (lookup.status === "not-found") notFound();
+  if (lookup.status === "inactive") {
+    return <InactiveLinkCard description="Este link foi desativado pelo responsável." />;
   }
+
+  const { link: typedLink, project: typedProject } = lookup;
+  const supabase = createServiceRoleClient();
 
   const { data: template } = await supabase
     .from("cl_form_templates")
@@ -60,50 +46,32 @@ export default async function PublicFormFillPage({
 
   if (!template) notFound();
 
-  const [
-    { data: sections },
-    { data: fields },
-    { data: project },
-    { data: priorSubmissions },
-  ] = await Promise.all([
-    supabase
-      .from("cl_form_sections")
-      .select("*")
-      .eq("template_id", params.templateId)
-      .order("position"),
-    supabase
-      .from("cl_form_fields")
-      .select("*")
-      .eq("template_id", params.templateId)
-      .order("position"),
-    supabase
-      .from("cl_projects")
-      .select("created_by, allow_resubmit_answers")
-      .eq("id", typedLink.project_id)
-      .maybeSingle(),
-    supabase
-      .from("cl_form_submissions")
-      .select("id, submitted_at, created_at")
-      .eq("project_id", typedLink.project_id)
-      .eq("template_id", params.templateId)
-      .eq("status", "submitted")
-      .order("submitted_at", { ascending: false }),
-  ]);
+  const [{ data: sections }, { data: fields }, { data: priorSubmissions }] =
+    await Promise.all([
+      supabase
+        .from("cl_form_sections")
+        .select("*")
+        .eq("template_id", params.templateId)
+        .order("position"),
+      supabase
+        .from("cl_form_fields")
+        .select("*")
+        .eq("template_id", params.templateId)
+        .order("position"),
+      supabase
+        .from("cl_form_submissions")
+        .select("id, submitted_at, created_at")
+        .eq("project_id", typedLink.project_id)
+        .eq("template_id", params.templateId)
+        .eq("status", "submitted")
+        .order("submitted_at", { ascending: false }),
+    ]);
 
-  const typedProject = project as Pick<
-    ClProject,
-    "created_by" | "allow_resubmit_answers"
-  > | null;
-
-  const { data: officeSettingsData } = typedProject
-    ? await supabase
-        .from("cl_office_settings")
-        .select(
-          "office_name, logo_url, website, instagram, facebook, linkedin, twitter, whatsapp",
-        )
-        .eq("user_id", typedProject.created_by)
-        .maybeSingle()
-    : { data: null };
+  const { data: officeSettingsData } = await supabase
+    .from("cl_office_settings")
+    .select(OFFICE_PUBLIC_FIELDS)
+    .eq("user_id", typedProject.created_by)
+    .maybeSingle();
 
   const officeSettings = officeSettingsData as PublicOfficeSettings | null;
 
@@ -176,7 +144,7 @@ export default async function PublicFormFillPage({
     }
   }
 
-  const allowResubmit = Boolean(typedProject?.allow_resubmit_answers);
+  const allowResubmit = Boolean(typedProject.allow_resubmit_answers);
 
   return (
     <PublicFillWrapper

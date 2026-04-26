@@ -3,46 +3,46 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { signInSchema, signUpSchema } from "@/lib/schemas/auth";
+import { fail, ok } from "@/lib/server-action";
 import { createClient } from "@/lib/supabase/server";
 
 export async function signIn(formData: FormData) {
-  const email = String(formData.get("email") ?? "").trim();
-  const password = String(formData.get("password") ?? "");
-
-  if (!email || !password) {
-    return { error: "Email e senha são obrigatórios." };
+  const parsed = signInSchema.safeParse({
+    email: formData.get("email"),
+    password: formData.get("password"),
+  });
+  if (!parsed.success) {
+    return fail(parsed.error.issues[0]?.message ?? "Dados inválidos.");
   }
 
   const supabase = createClient();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const { error } = await supabase.auth.signInWithPassword(parsed.data);
 
-  if (error) {
-    return { error: error.message };
-  }
+  if (error) return fail(error.message);
 
   revalidatePath("/", "layout");
   redirect("/projects");
 }
 
 export async function signUp(formData: FormData) {
-  const email = String(formData.get("email") ?? "").trim();
-  const password = String(formData.get("password") ?? "");
-
-  if (!email || !password) {
-    return { error: "Email e senha são obrigatórios." };
-  }
-  if (password.length < 6) {
-    return { error: "A senha precisa ter pelo menos 6 caracteres." };
+  const parsed = signUpSchema.safeParse({
+    email: formData.get("email"),
+    password: formData.get("password"),
+  });
+  if (!parsed.success) {
+    return fail(parsed.error.issues[0]?.message ?? "Dados inválidos.");
   }
 
   const supabase = createClient();
-  const { error } = await supabase.auth.signUp({ email, password });
+  const { error } = await supabase.auth.signUp(parsed.data);
 
-  if (error) {
-    return { error: error.message };
-  }
+  if (error) return fail(error.message);
 
-  return { success: "Conta criada. Verifique seu email se a confirmação estiver habilitada." };
+  return {
+    ...ok(),
+    success: "Conta criada. Verifique seu email se a confirmação estiver habilitada.",
+  };
 }
 
 export async function signOut() {

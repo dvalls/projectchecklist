@@ -21,8 +21,7 @@ import { ChoiceLabel, RecommendedBadge } from "./shared";
 
 function InfoBlock({ content }: { content: string }) {
   const lines = content.split("\n").filter((l) => l.trim().length > 0);
-  const isAllBullets =
-    lines.length > 0 && lines.every((l) => l.trim().startsWith("- "));
+  const isAllBullets = lines.length > 0 && lines.every((l) => l.trim().startsWith("- "));
   if (isAllBullets) {
     return (
       <ul className="list-disc space-y-1 pl-5 text-xs text-muted-foreground">
@@ -33,9 +32,7 @@ function InfoBlock({ content }: { content: string }) {
     );
   }
   return (
-    <p className="whitespace-pre-wrap text-xs italic text-muted-foreground">
-      {content}
-    </p>
+    <p className="whitespace-pre-wrap text-xs italic text-muted-foreground">{content}</p>
   );
 }
 
@@ -75,34 +72,32 @@ export function FieldPreview({
 
   return (
     <div className={`space-y-1.5 ${hidden ? "opacity-60" : ""}`}>
-      <div className="flex items-center gap-2">
-        <Label>
-          {field.label || "(sem label)"}
-          {field.required ? (
-            <span className="ml-1 text-destructive-foreground">*</span>
+      {field.type !== "checkbox" ? (
+        <>
+          <div className="flex items-center gap-2">
+            <Label>
+              {field.label || "(sem label)"}
+              {field.required ? (
+                <span className="ml-1 text-destructive-foreground">*</span>
+              ) : null}
+            </Label>
+            {hidden ? (
+              <span
+                className="inline-flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground"
+                title="Oculto até condição"
+              >
+                <EyeOff className="h-3 w-3" /> condicional
+              </span>
+            ) : null}
+          </div>
+          {field.help_text ? (
+            <p className="text-xs italic text-muted-foreground">{field.help_text}</p>
           ) : null}
-        </Label>
-        {hidden ? (
-          <span
-            className="inline-flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground"
-            title="Oculto até condição"
-          >
-            <EyeOff className="h-3 w-3" /> condicional
-          </span>
-        ) : null}
-      </div>
-      {field.help_text ? (
-        <p className="text-xs italic text-muted-foreground">
-          {field.help_text}
-        </p>
+        </>
       ) : null}
 
-      {field.type === "text" ? (
-        <Input placeholder="Texto curto" disabled />
-      ) : null}
-      {field.type === "number" ? (
-        <Input type="number" placeholder="0" disabled />
-      ) : null}
+      {field.type === "text" ? <Input placeholder="Texto curto" disabled /> : null}
+      {field.type === "number" ? <Input type="number" placeholder="0" disabled /> : null}
       {field.type === "textarea" ? (
         <Textarea placeholder="Texto longo" rows={3} disabled />
       ) : null}
@@ -113,20 +108,32 @@ export function FieldPreview({
         </div>
       ) : null}
       {field.type === "checkbox" ? (
-        <div className="space-y-1 pt-1">
+        <div className="space-y-1">
           <div className="flex items-center gap-2">
             <Checkbox disabled />
             <span className="text-sm text-muted-foreground">
               {field.label || "Marcar"}
+              {field.required ? (
+                <span className="ml-1 text-destructive-foreground">*</span>
+              ) : null}
             </span>
+            {hidden ? (
+              <span
+                className="inline-flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground"
+                title="Oculto até condição"
+              >
+                <EyeOff className="h-3 w-3" /> condicional
+              </span>
+            ) : null}
             {opts.recommended_value ? <RecommendedBadge /> : null}
           </div>
+          {field.help_text ? (
+            <p className="pl-6 text-xs italic text-muted-foreground">{field.help_text}</p>
+          ) : null}
           {opts.recommended_value ? (
-            <p className="text-[11px] text-amber-700">
+            <p className="pl-6 text-[11px] text-warning-foreground">
               StudioBIM recomenda:{" "}
-              <strong>
-                {opts.recommended_value === "true" ? "Sim" : "Não"}
-              </strong>
+              <strong>{opts.recommended_value === "true" ? "Sim" : "Não"}</strong>
             </p>
           ) : null}
         </div>
@@ -172,9 +179,7 @@ export function FieldPreview({
       {field.type === "radio" ? (
         <div className="space-y-1.5 pt-1">
           {choices.length === 0 ? (
-            <p className="text-xs text-muted-foreground">
-              (adicione opções)
-            </p>
+            <p className="text-xs text-muted-foreground">(adicione opções)</p>
           ) : (
             choices.map((c) => (
               <label
@@ -206,12 +211,10 @@ export function ImageDisplayField({
   hidden?: boolean;
 }) {
   const publicUrl = getTemplateAssetPublicUrl(imageUrl);
-  const href = link && link.trim() ? link.trim() : publicUrl ?? null;
+  const href = link && link.trim() ? link.trim() : (publicUrl ?? null);
 
   return (
-    <figure
-      className={`space-y-1.5 ${hidden ? "opacity-60" : ""}`}
-    >
+    <figure className={`space-y-1.5 ${hidden ? "opacity-60" : ""}`}>
       {label ? (
         <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
           {label}

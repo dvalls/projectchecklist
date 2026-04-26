@@ -17,20 +17,15 @@ import type {
   ClSubmissionValueMatrix,
 } from "@/lib/supabase/types";
 
-const BUCKET = "checklist-images";
+import { BUCKETS } from "@/lib/constants";
+import type { SubmissionMatrixValueInput, SubmissionValueInput } from "@/lib/forms/types";
+import { identityIdentificationSchema } from "@/lib/schemas/public-link";
+import { getPublicBucketBaseUrl } from "@/lib/storage";
 
-export interface PublicSubmissionValueInput {
-  field_id: string;
-  value: string | null;
-  image_url: string | null;
-}
+const BUCKET = BUCKETS.CHECKLIST_IMAGES;
 
-export interface PublicSubmissionMatrixValueInput {
-  field_id: string;
-  env_key: string;
-  value: string | null;
-  image_url: string | null;
-}
+export type PublicSubmissionValueInput = SubmissionValueInput;
+export type PublicSubmissionMatrixValueInput = SubmissionMatrixValueInput;
 
 export interface CreatePublicSubmissionInput {
   token: string;
@@ -41,18 +36,15 @@ export interface CreatePublicSubmissionInput {
   matrix_values?: PublicSubmissionMatrixValueInput[];
 }
 
-function isValidEmail(email: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
-
-export async function createPublicSubmission(
-  input: CreatePublicSubmissionInput,
-) {
-  const name = input.client_name?.trim() ?? "";
-  const email = input.client_email?.trim().toLowerCase() ?? "";
-
-  if (!name) return { error: "Informe o seu nome." };
-  if (!isValidEmail(email)) return { error: "E-mail inválido." };
+export async function createPublicSubmission(input: CreatePublicSubmissionInput) {
+  const parsed = identityIdentificationSchema.safeParse({
+    client_name: input.client_name,
+    client_email: input.client_email,
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+  }
+  const { client_name: name, client_email: email } = parsed.data;
 
   const supabase = createServiceRoleClient();
 
@@ -89,9 +81,7 @@ export async function createPublicSubmission(
       .select("id, project_id, is_public")
       .eq("id", templateId)
       .maybeSingle();
-    const typedTpl = tpl as
-      | { id: string; project_id: string; is_public: boolean }
-      | null;
+    const typedTpl = tpl as { id: string; project_id: string; is_public: boolean } | null;
     if (!typedTpl) return { error: "Formulário inválido." };
     if (typedTpl.project_id !== typedLink.project_id) {
       return { error: "Formulário não pertence a este projeto." };
@@ -130,9 +120,7 @@ export async function createPublicSubmission(
       image_url: v.image_url,
     }));
 
-    const { error: valErr } = await supabase
-      .from("cl_submission_values")
-      .insert(rows);
+    const { error: valErr } = await supabase.from("cl_submission_values").insert(rows);
 
     if (valErr) return { error: valErr.message };
   }
@@ -162,12 +150,7 @@ export async function createPublicSubmission(
 export interface PublicSubmissionSummary {
   submission: Pick<
     ClFormSubmission,
-    | "id"
-    | "client_name"
-    | "client_email"
-    | "submitted_at"
-    | "created_at"
-    | "status"
+    "id" | "client_name" | "client_email" | "submitted_at" | "created_at" | "status"
   >;
   template: Pick<
     ClFormTemplate,
@@ -205,19 +188,17 @@ export async function getPublicSubmissionSummary(
     .eq("id", submissionId)
     .maybeSingle();
 
-  const typedSubmission = submission as
-    | (Pick<
-        ClFormSubmission,
-        | "id"
-        | "template_id"
-        | "public_link_id"
-        | "client_name"
-        | "client_email"
-        | "submitted_at"
-        | "created_at"
-        | "status"
-      >)
-    | null;
+  const typedSubmission = submission as Pick<
+    ClFormSubmission,
+    | "id"
+    | "template_id"
+    | "public_link_id"
+    | "client_name"
+    | "client_email"
+    | "submitted_at"
+    | "created_at"
+    | "status"
+  > | null;
 
   if (!typedSubmission) return { error: "Submissão não encontrada." };
   if (typedSubmission.public_link_id !== typedLink.id) {
@@ -302,12 +283,7 @@ export interface ReportTemplateEntry {
   submissions: Array<{
     submission: Pick<
       ClFormSubmission,
-      | "id"
-      | "client_name"
-      | "client_email"
-      | "submitted_at"
-      | "created_at"
-      | "status"
+      "id" | "client_name" | "client_email" | "submitted_at" | "created_at" | "status"
     >;
     values: ClSubmissionValue[];
     matrixValues: ClSubmissionValueMatrix[];
@@ -326,9 +302,7 @@ export interface PublicFullReport {
 
 export async function getPublicFullReport(
   token: string,
-): Promise<
-  { data: PublicFullReport; error?: never } | { data?: never; error: string }
-> {
+): Promise<{ data: PublicFullReport; error?: never } | { data?: never; error: string }> {
   const supabase = createServiceRoleClient();
 
   const { data: link } = await supabase
@@ -337,9 +311,7 @@ export async function getPublicFullReport(
     .eq("token", token)
     .maybeSingle();
 
-  const typedLink = link as
-    | { id: string; project_id: string; is_active: boolean }
-    | null;
+  const typedLink = link as { id: string; project_id: string; is_active: boolean } | null;
   if (!typedLink) return { error: "Link inválido." };
   if (!typedLink.is_active) return { error: "Link desativado." };
 
@@ -489,8 +461,8 @@ export async function getPublicFullReport(
   const disciplinesInUse = new Set(
     typedTemplates.map((t) => t.discipline_id).filter(Boolean) as string[],
   );
-  const relevantDisciplines = ((disciplines ?? []) as ClDiscipline[]).filter(
-    (d) => disciplinesInUse.has(d.id),
+  const relevantDisciplines = ((disciplines ?? []) as ClDiscipline[]).filter((d) =>
+    disciplinesInUse.has(d.id),
   );
 
   const typedProjectDesigners = (projectDesigners ?? []) as ClProjectDesigner[];
@@ -531,8 +503,7 @@ export async function getPublicFullReport(
     })
     .filter((entry) => entry.submissions.length > 0);
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
-  const publicBaseUrl = `${supabaseUrl}/storage/v1/object/public/${BUCKET}`;
+  const publicBaseUrl = getPublicBucketBaseUrl(BUCKET);
 
   return {
     data: {

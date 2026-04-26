@@ -63,8 +63,7 @@ export function ProjectPublicSubmissionsDialog({
         <DialogHeader>
           <DialogTitle>Preenchimentos públicos</DialogTitle>
           <DialogDescription>
-            Registro de quem preencheu os checklists de {projectName} por link
-            público.
+            Registro de quem preencheu os checklists de {projectName} por link público.
           </DialogDescription>
         </DialogHeader>
         {submissions.length === 0 ? (
@@ -89,24 +88,18 @@ export function ProjectPublicSubmissionsDialog({
                   const tpl = templateById.get(s.template_id);
                   return (
                     <tr key={s.id} className="border-b last:border-0">
-                      <td className="py-2 pr-4 font-medium">
-                        {s.client_name ?? "—"}
-                      </td>
+                      <td className="py-2 pr-4 font-medium">{s.client_name ?? "—"}</td>
                       <td className="py-2 pr-4 text-muted-foreground">
                         {s.client_email ?? "—"}
                       </td>
                       <td className="py-2 pr-4">
                         {tpl?.name ?? (
-                          <span className="text-muted-foreground">
-                            (removido)
-                          </span>
+                          <span className="text-muted-foreground">(removido)</span>
                         )}
                       </td>
                       <td className="py-2 pr-4">
                         <Badge
-                          variant={
-                            s.status === "submitted" ? "default" : "secondary"
-                          }
+                          variant={s.status === "submitted" ? "default" : "secondary"}
                         >
                           {s.status === "submitted" ? "Enviado" : "Rascunho"}
                         </Badge>

@@ -13,8 +13,6 @@ export default async function SettingsDisciplinesPage() {
     .order("name");
 
   return (
-    <DisciplinesManager
-      initialDisciplines={(disciplines ?? []) as ClDiscipline[]}
-    />
+    <DisciplinesManager initialDisciplines={(disciplines ?? []) as ClDiscipline[]} />
   );
 }

@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
-import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { Button } from "@/components/ui/button";
@@ -32,24 +31,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 
+import { BUCKETS } from "@/lib/constants";
+import {
+  officeSettingsFormSchema,
+  type OfficeSettingsFormValues as FormValues,
+} from "@/lib/schemas/office";
 import { createClient } from "@/lib/supabase/client";
 import type { ClOfficeSettings } from "@/lib/supabase/types";
 
 import { upsertOfficeSettings } from "./actions";
 
-const BUCKET = "checklist-images";
-
-const schema = z.object({
-  office_name: z.string().max(120).optional().nullable(),
-  website: z.string().url("URL inválida").optional().or(z.literal("")).nullable(),
-  instagram: z.string().max(100).optional().nullable(),
-  facebook: z.string().max(100).optional().nullable(),
-  linkedin: z.string().max(200).optional().nullable(),
-  twitter: z.string().max(100).optional().nullable(),
-  whatsapp: z.string().max(20).optional().nullable(),
-});
-
-type FormValues = z.infer<typeof schema>;
+const BUCKET = BUCKETS.CHECKLIST_IMAGES;
 
 interface Props {
   initialSettings: ClOfficeSettings | null;
@@ -68,7 +60,7 @@ export function OfficeSettingsManager({ initialSettings, publicBaseUrl }: Props)
     handleSubmit,
     formState: { errors, isDirty },
   } = useForm<FormValues>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(officeSettingsFormSchema),
     defaultValues: {
       office_name: initialSettings?.office_name ?? "",
       website: initialSettings?.website ?? "",
@@ -230,9 +222,7 @@ export function OfficeSettingsManager({ initialSettings, publicBaseUrl }: Props)
         <Card>
           <CardHeader>
             <CardTitle>Identificação</CardTitle>
-            <CardDescription>
-              Nome e presença digital do escritório.
-            </CardDescription>
+            <CardDescription>Nome e presença digital do escritório.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Nome */}
@@ -248,9 +238,7 @@ export function OfficeSettingsManager({ initialSettings, publicBaseUrl }: Props)
                 />
               </div>
               {errors.office_name && (
-                <p className="text-xs text-destructive">
-                  {errors.office_name.message}
-                </p>
+                <p className="text-xs text-destructive">{errors.office_name.message}</p>
               )}
             </div>
 
@@ -267,9 +255,7 @@ export function OfficeSettingsManager({ initialSettings, publicBaseUrl }: Props)
                 />
               </div>
               {errors.website && (
-                <p className="text-xs text-destructive">
-                  {errors.website.message}
-                </p>
+                <p className="text-xs text-destructive">{errors.website.message}</p>
               )}
             </div>
 

@@ -1,11 +1,11 @@
+import { BUCKETS } from "@/lib/constants";
+import { getPublicBucketBaseUrl } from "@/lib/storage";
 import { createClient } from "@/lib/supabase/server";
 import type { ClOfficeSettings } from "@/lib/supabase/types";
 
 import { OfficeSettingsManager } from "./office-settings-manager";
 
 export const dynamic = "force-dynamic";
-
-const BUCKET = "checklist-images";
 
 export default async function SettingsOfficePage() {
   const supabase = createClient();
@@ -22,8 +22,7 @@ export default async function SettingsOfficePage() {
         .maybeSingle()
     : { data: null };
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
-  const publicBaseUrl = `${supabaseUrl}/storage/v1/object/public/${BUCKET}`;
+  const publicBaseUrl = getPublicBucketBaseUrl(BUCKETS.CHECKLIST_IMAGES);
 
   return (
     <OfficeSettingsManager

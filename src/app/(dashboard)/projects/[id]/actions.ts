@@ -4,73 +4,59 @@ import { randomBytes } from "node:crypto";
 
 import { revalidatePath } from "next/cache";
 
+import { assertUser, fail, ok } from "@/lib/server-action";
 import { createClient } from "@/lib/supabase/server";
 
-export async function updateProjectCover(
-  projectId: string,
-  imageUrl: string | null,
-) {
+export async function updateProjectCover(projectId: string, imageUrl: string | null) {
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Não autenticado." };
+  const auth = await assertUser(supabase);
+  if (!auth.user) return fail(auth.error);
 
   const { error } = await supabase
     .from("cl_projects")
     .update({ image_url: imageUrl })
     .eq("id", projectId);
 
-  if (error) return { error: error.message };
+  if (error) return fail(error.message);
 
   revalidatePath(`/projects/${projectId}`);
-  return { success: true };
+  return ok();
 }
 
-export async function updateProjectAllowResubmit(
-  projectId: string,
-  allow: boolean,
-) {
+export async function updateProjectAllowResubmit(projectId: string, allow: boolean) {
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Não autenticado." };
+  const auth = await assertUser(supabase);
+  if (!auth.user) return fail(auth.error);
 
   const { error } = await supabase
     .from("cl_projects")
     .update({ allow_resubmit_answers: allow })
     .eq("id", projectId);
 
-  if (error) return { error: error.message };
+  if (error) return fail(error.message);
 
   revalidatePath(`/projects/${projectId}`);
   revalidatePath(`/projects/${projectId}/settings`);
-  return { success: true };
+  return ok();
 }
 
-export async function setProjectDesigners(
-  projectId: string,
-  designerIds: string[],
-) {
+export async function setProjectDesigners(projectId: string, designerIds: string[]) {
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Não autenticado." };
+  const auth = await assertUser(supabase);
+  if (!auth.user) return fail(auth.error);
 
   const { data: project } = await supabase
     .from("cl_projects")
     .select("id")
     .eq("id", projectId)
     .maybeSingle();
-  if (!project) return { error: "Projeto não encontrado." };
+  if (!project) return fail("Projeto não encontrado.");
 
   const { error: delErr } = await supabase
     .from("cl_project_designers")
     .delete()
     .eq("project_id", projectId);
-  if (delErr) return { error: delErr.message };
+  if (delErr) return fail(delErr.message);
 
   if (designerIds.length > 0) {
     const rows = designerIds.map((designer_id, i) => ({
@@ -78,22 +64,18 @@ export async function setProjectDesigners(
       designer_id,
       position: i,
     }));
-    const { error: insErr } = await supabase
-      .from("cl_project_designers")
-      .insert(rows);
-    if (insErr) return { error: insErr.message };
+    const { error: insErr } = await supabase.from("cl_project_designers").insert(rows);
+    if (insErr) return fail(insErr.message);
   }
 
   revalidatePath(`/projects/${projectId}`);
-  return { success: true };
+  return ok();
 }
 
 export async function setTemplatePublic(templateId: string, isPublic: boolean) {
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Não autenticado." };
+  const auth = await assertUser(supabase);
+  if (!auth.user) return fail(auth.error);
 
   const { data, error } = await supabase
     .from("cl_form_templates")
@@ -103,26 +85,24 @@ export async function setTemplatePublic(templateId: string, isPublic: boolean) {
     .single();
 
   if (error || !data) {
-    return { error: error?.message ?? "Erro ao atualizar." };
+    return fail(error?.message ?? "Erro ao atualizar.");
   }
   const typed = data as { project_id: string };
   revalidatePath(`/projects/${typed.project_id}`);
-  return { success: true };
+  return ok();
 }
 
 export async function createProjectPublicLink(projectId: string) {
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Não autenticado." };
+  const auth = await assertUser(supabase);
+  if (!auth.user) return fail(auth.error);
 
   const { data: project } = await supabase
     .from("cl_projects")
     .select("id")
     .eq("id", projectId)
     .maybeSingle();
-  if (!project) return { error: "Projeto não encontrado." };
+  if (!project) return fail("Projeto não encontrado.");
 
   const token = randomBytes(16).toString("hex");
 
@@ -132,29 +112,24 @@ export async function createProjectPublicLink(projectId: string) {
       token,
       project_id: projectId,
       template_id: null,
-      created_by: user.id,
+      created_by: auth.user.id,
       is_active: true,
     })
     .select("id, token")
     .single();
 
   if (error || !data) {
-    return { error: error?.message ?? "Erro ao criar link." };
+    return fail(error?.message ?? "Erro ao criar link.");
   }
 
   revalidatePath(`/projects/${projectId}`);
-  return { success: true, link: data as { id: string; token: string } };
+  return ok(data as { id: string; token: string });
 }
 
-export async function setProjectLinkActive(
-  linkId: string,
-  isActive: boolean,
-) {
+export async function setProjectLinkActive(linkId: string, isActive: boolean) {
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Não autenticado." };
+  const auth = await assertUser(supabase);
+  if (!auth.user) return fail(auth.error);
 
   const { data, error } = await supabase
     .from("cl_public_links")
@@ -164,19 +139,17 @@ export async function setProjectLinkActive(
     .single();
 
   if (error || !data) {
-    return { error: error?.message ?? "Erro ao atualizar." };
+    return fail(error?.message ?? "Erro ao atualizar.");
   }
   const typed = data as { project_id: string };
   revalidatePath(`/projects/${typed.project_id}`);
-  return { success: true };
+  return ok();
 }
 
 export async function deleteProjectLink(linkId: string) {
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Não autenticado." };
+  const auth = await assertUser(supabase);
+  if (!auth.user) return fail(auth.error);
 
   const { data: existing } = await supabase
     .from("cl_public_links")
@@ -185,15 +158,12 @@ export async function deleteProjectLink(linkId: string) {
     .maybeSingle();
   const typedExisting = existing as { project_id: string } | null;
 
-  const { error } = await supabase
-    .from("cl_public_links")
-    .delete()
-    .eq("id", linkId);
+  const { error } = await supabase.from("cl_public_links").delete().eq("id", linkId);
 
-  if (error) return { error: error.message };
+  if (error) return fail(error.message);
 
   if (typedExisting) {
     revalidatePath(`/projects/${typedExisting.project_id}`);
   }
-  return { success: true };
+  return ok();
 }
