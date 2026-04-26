@@ -9,6 +9,7 @@ import {
   ChevronRight,
   EyeOff,
   GripVertical,
+  Image as ImageIcon,
   Loader2,
   Plus,
   Star,
@@ -20,6 +21,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -38,6 +40,7 @@ import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
 import type {
+  Choice,
   ColumnSpan,
   ConditionOp,
   FieldOptions,
@@ -45,6 +48,7 @@ import type {
   SectionColumns,
 } from "@/lib/supabase/types";
 
+import { PhotoHintEditor } from "./photo-hint-editor";
 import type { EditorField, EditorSection } from "./template-builder";
 import {
   FieldTypeIcon,
@@ -286,6 +290,13 @@ export function FieldAccordionItem({
                     nextType === "radio" ||
                     nextType === "checkbox_group";
                   const prevOpts = (f.options as Exclude<FieldOptions, null>) ?? {};
+                  const supportPhotoHint = nextType !== "info" && nextType !== "image";
+                  const photoHint = supportPhotoHint
+                    ? {
+                        image_url: prevOpts.image_url ?? null,
+                        image_caption: prevOpts.image_caption ?? null,
+                      }
+                    : null;
                   return {
                     ...f,
                     type: nextType,
@@ -298,6 +309,7 @@ export function FieldAccordionItem({
                             nextType === "checkbox_group"
                               ? (prevOpts.allow_other ?? false)
                               : undefined,
+                          ...(photoHint ?? {}),
                         }
                       : nextType === "info"
                         ? { content: prevOpts.content ?? "" }
@@ -307,7 +319,7 @@ export function FieldAccordionItem({
                               image_caption: prevOpts.image_caption ?? null,
                               image_link: prevOpts.image_link ?? null,
                             }
-                          : null,
+                          : photoHint,
                   };
                 })
               }
@@ -373,6 +385,8 @@ export function FieldAccordionItem({
 
           {needsChoices ? (
             <ChoicesEditor
+              templateId={templateId}
+              fieldLocalId={field.localId}
               choices={choices}
               allowOther={allowOther}
               showAllowOther={field.type === "checkbox_group"}
@@ -455,6 +469,28 @@ export function FieldAccordionItem({
                   };
                 })
               }
+              onChangeImage={(idx, imageUrl, imageCaption) =>
+                onChange((f) => {
+                  const current =
+                    (f.options as Exclude<FieldOptions, null>)?.choices ?? [];
+                  const next = current.map((c, i) =>
+                    i === idx
+                      ? {
+                          ...c,
+                          image_url: imageUrl,
+                          image_caption: imageCaption,
+                        }
+                      : c,
+                  );
+                  return {
+                    ...f,
+                    options: {
+                      ...(f.options as Exclude<FieldOptions, null>),
+                      choices: next,
+                    },
+                  };
+                })
+              }
               onRemove={(idx) =>
                 onChange((f) => {
                   const current =
@@ -474,6 +510,33 @@ export function FieldAccordionItem({
                   options: {
                     ...(f.options as Exclude<FieldOptions, null>),
                     allow_other: checked,
+                  },
+                }))
+              }
+            />
+          ) : null}
+
+          {!isDisplayOnly ? (
+            <FieldPhotoHint
+              templateId={templateId}
+              fieldLocalId={field.localId}
+              imageUrl={imageUrl}
+              caption={imageCaption}
+              onChangeImageUrl={(url) =>
+                onChange((f) => ({
+                  ...f,
+                  options: {
+                    ...((f.options as Exclude<FieldOptions, null>) ?? {}),
+                    image_url: url,
+                  },
+                }))
+              }
+              onChangeCaption={(value) =>
+                onChange((f) => ({
+                  ...f,
+                  options: {
+                    ...((f.options as Exclude<FieldOptions, null>) ?? {}),
+                    image_caption: value || null,
                   },
                 }))
               }
@@ -680,6 +743,8 @@ export function FieldAccordionItem({
 }
 
 function ChoicesEditor({
+  templateId,
+  fieldLocalId,
   choices,
   allowOther,
   showAllowOther,
@@ -688,10 +753,13 @@ function ChoicesEditor({
   onChangeLabel,
   onChangeDescription,
   onToggleRecommended,
+  onChangeImage,
   onRemove,
   onToggleAllowOther,
 }: {
-  choices: { label: string; value: string; recommended?: boolean; description?: string }[];
+  templateId: string;
+  fieldLocalId: string;
+  choices: Choice[];
   allowOther: boolean;
   showAllowOther: boolean;
   showDescription: boolean;
@@ -699,9 +767,17 @@ function ChoicesEditor({
   onChangeLabel: (idx: number, label: string) => void;
   onChangeDescription: (idx: number, description: string) => void;
   onToggleRecommended: (idx: number, checked: boolean) => void;
+  onChangeImage: (
+    idx: number,
+    imageUrl: string | null,
+    imageCaption: string | null,
+  ) => void;
   onRemove: (idx: number) => void;
   onToggleAllowOther: (checked: boolean) => void;
 }) {
+  const [imageEditorIdx, setImageEditorIdx] = useState<number | null>(null);
+  const editingChoice = imageEditorIdx !== null ? choices[imageEditorIdx] : null;
+
   return (
     <div className="space-y-2 rounded-md border bg-background p-3">
       <div className="flex items-center justify-between">
@@ -717,6 +793,7 @@ function ChoicesEditor({
         <div className="space-y-3">
           {choices.map((choice, idx) => {
             const isRecommended = Boolean(choice.recommended);
+            const hasImage = Boolean(choice.image_url);
             return (
               <div key={idx} className="space-y-1">
                 <div className="flex items-center gap-1.5">
@@ -726,6 +803,25 @@ function ChoicesEditor({
                     className="h-8 flex-1"
                     placeholder="Texto da opção"
                   />
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className={cn(
+                      "h-8 w-8",
+                      hasImage
+                        ? "text-foreground"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                    onClick={() => setImageEditorIdx(idx)}
+                    title={hasImage ? "Editar foto da opção" : "Anexar foto"}
+                    aria-pressed={hasImage}
+                    aria-label={hasImage ? "Editar foto da opção" : "Anexar foto à opção"}
+                  >
+                    <ImageIcon
+                      className={cn("h-3.5 w-3.5", hasImage && "text-blue-600")}
+                    />
+                  </Button>
                   <Button
                     type="button"
                     size="icon"
@@ -793,6 +889,107 @@ function ChoicesEditor({
         <Star className="h-3 w-3 fill-amber-400 text-amber-500" />
         Marque as opções preferenciais pela StudioBIM.
       </p>
+
+      <Dialog
+        open={imageEditorIdx !== null}
+        onOpenChange={(next) => {
+          if (!next) setImageEditorIdx(null);
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="pr-8">
+              Foto da opção {editingChoice ? `“${editingChoice.label}”` : ""}
+            </DialogTitle>
+          </DialogHeader>
+          {editingChoice && imageEditorIdx !== null ? (
+            <PhotoHintEditor
+              templateId={templateId}
+              scopeKey={`${fieldLocalId}-choice-${editingChoice.value || imageEditorIdx}`}
+              imageUrl={editingChoice.image_url ?? null}
+              caption={editingChoice.image_caption ?? ""}
+              onChangeImageUrl={(url) =>
+                onChangeImage(imageEditorIdx, url, editingChoice.image_caption ?? null)
+              }
+              onChangeCaption={(value) =>
+                onChangeImage(
+                  imageEditorIdx,
+                  editingChoice.image_url ?? null,
+                  value || null,
+                )
+              }
+            />
+          ) : null}
+          <p className="text-[11px] text-muted-foreground">
+            Aparece como ícone clicável ao lado da opção. Útil para ilustrar termos
+            técnicos.
+          </p>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function FieldPhotoHint({
+  templateId,
+  fieldLocalId,
+  imageUrl,
+  caption,
+  onChangeImageUrl,
+  onChangeCaption,
+}: {
+  templateId: string;
+  fieldLocalId: string;
+  imageUrl: string | null;
+  caption: string;
+  onChangeImageUrl: (url: string | null) => void;
+  onChangeCaption: (value: string) => void;
+}) {
+  const hasImage = Boolean(imageUrl);
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="rounded-md border bg-background">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={cn(
+          "flex w-full items-center justify-between gap-2 px-3 py-2 text-sm font-medium",
+          open ? "border-b" : "",
+        )}
+        aria-expanded={open}
+      >
+        <span className="flex items-center gap-2">
+          <ImageIcon className="h-3.5 w-3.5" />
+          <span>Foto de apoio do campo</span>
+          {hasImage ? (
+            <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+              anexada
+            </span>
+          ) : null}
+        </span>
+        {open ? (
+          <ChevronDown className="h-4 w-4" />
+        ) : (
+          <ChevronRight className="h-4 w-4" />
+        )}
+      </button>
+      {open ? (
+        <div className="space-y-2 px-3 py-3">
+          <PhotoHintEditor
+            templateId={templateId}
+            scopeKey={`${fieldLocalId}-field`}
+            imageUrl={imageUrl}
+            caption={caption}
+            onChangeImageUrl={onChangeImageUrl}
+            onChangeCaption={onChangeCaption}
+          />
+          <p className="text-[11px] text-muted-foreground">
+            Aparece como ícone clicável ao lado do título do campo no formulário. Útil
+            para mostrar &quot;onde fica isso&quot; ou ilustrar a pergunta.
+          </p>
+        </div>
+      ) : null}
     </div>
   );
 }

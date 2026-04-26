@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 
+import { assertUser } from "@/lib/server-action";
+import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import type {
   ClDesigner,
@@ -522,4 +524,74 @@ export async function getPublicFullReport(
       generatedAt: new Date().toISOString(),
     },
   };
+}
+
+export async function deletePublicSubmission(
+  token: string,
+  submissionId: string,
+): Promise<{ error?: string }> {
+  const supabaseAuth = createClient();
+  const authResult = await assertUser(supabaseAuth);
+  if (!authResult.user) return { error: authResult.error };
+
+  const supabase = createServiceRoleClient();
+
+  const { data: link } = await supabase
+    .from("cl_public_links")
+    .select("id, project_id, is_active")
+    .eq("token", token)
+    .maybeSingle();
+
+  const typedLink = link as { id: string; project_id: string; is_active: boolean } | null;
+  if (!typedLink) return { error: "Link inválido." };
+  if (!typedLink.is_active) return { error: "Link desativado." };
+
+  const { data: project } = await supabase
+    .from("cl_projects")
+    .select("id, created_by")
+    .eq("id", typedLink.project_id)
+    .maybeSingle();
+
+  const typedProject = project as { id: string; created_by: string } | null;
+  if (!typedProject) return { error: "Projeto não encontrado." };
+
+  if (typedProject.created_by !== authResult.user.id) {
+    return { error: "Sem permissão para excluir este preenchimento." };
+  }
+
+  const { data: submission } = await supabase
+    .from("cl_form_submissions")
+    .select("id, public_link_id")
+    .eq("id", submissionId)
+    .maybeSingle();
+
+  const typedSubmission = submission as {
+    id: string;
+    public_link_id: string | null;
+  } | null;
+
+  if (!typedSubmission) return { error: "Preenchimento não encontrado." };
+  if (typedSubmission.public_link_id !== typedLink.id) {
+    return { error: "Preenchimento não pertence a este link." };
+  }
+
+  await Promise.all([
+    supabase.from("cl_submission_values").delete().eq("submission_id", submissionId),
+    supabase
+      .from("cl_submission_values_matrix")
+      .delete()
+      .eq("submission_id", submissionId),
+  ]);
+
+  const { error: deleteError } = await supabase
+    .from("cl_form_submissions")
+    .delete()
+    .eq("id", submissionId);
+
+  if (deleteError) return { error: deleteError.message };
+
+  revalidatePath(`/p/${token}`);
+  revalidatePath(`/projects/${typedLink.project_id}`);
+
+  return {};
 }

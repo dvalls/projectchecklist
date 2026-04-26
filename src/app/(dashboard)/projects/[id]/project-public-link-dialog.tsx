@@ -6,9 +6,9 @@ import {
   ExternalLink,
   Eye,
   EyeOff,
-  Link2,
   Loader2,
   Plus,
+  Send,
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -77,7 +77,7 @@ export function ProjectPublicLinkDialog({ projectId, initialLinks, templates }: 
         },
         ...prev,
       ]);
-      toast.success("Link público gerado.");
+      toast.success("Link gerado com sucesso.");
     });
   }
 
@@ -136,15 +136,15 @@ export function ProjectPublicLinkDialog({ projectId, initialLinks, templates }: 
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
-          <Link2 className="mr-2 h-4 w-4" />
-          Link público
+          <Send className="mr-2 h-4 w-4" />
+          Enviar checklist
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Link público do projeto</DialogTitle>
+          <DialogTitle>Enviar checklist ao cliente</DialogTitle>
           <DialogDescription>
-            Gere um link para o cliente preencher todos os checklists deste projeto.
+            Gere um link e envie para o cliente preencher os checklists deste projeto.
           </DialogDescription>
         </DialogHeader>
 
@@ -161,7 +161,7 @@ export function ProjectPublicLinkDialog({ projectId, initialLinks, templates }: 
           </div>
 
           {links.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhum link público gerado.</p>
+            <p className="text-sm text-muted-foreground">Nenhum link gerado ainda.</p>
           ) : (
             <div className="space-y-3">
               {links.map((link) => {
@@ -203,7 +203,7 @@ export function ProjectPublicLinkDialog({ projectId, initialLinks, templates }: 
                       </div>
                       <ConfirmDialog
                         destructive
-                        title="Remover este link público?"
+                        title="Remover este link?"
                         description="Os clientes que ainda tiverem este link não conseguirão mais acessar."
                         confirmLabel="Remover"
                         onConfirm={() => handleDelete(link)}
@@ -212,7 +212,7 @@ export function ProjectPublicLinkDialog({ projectId, initialLinks, templates }: 
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                            aria-label="Remover link público"
+                            aria-label="Remover link"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
@@ -228,7 +228,7 @@ export function ProjectPublicLinkDialog({ projectId, initialLinks, templates }: 
           <div>
             <h3 className="mb-2 text-sm font-semibold">Formulários visíveis no link</h3>
             <p className="mb-3 text-xs text-muted-foreground">
-              Desmarque para ocultar um formulário do link público.
+              Desmarque para ocultar um formulário do link de envio.
             </p>
             {templatesState.length === 0 ? (
               <p className="text-sm text-muted-foreground">

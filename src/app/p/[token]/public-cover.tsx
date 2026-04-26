@@ -1,10 +1,20 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { Clock, ImageIcon, Play, User } from "lucide-react";
+import { useEffect, useState, useTransition } from "react";
+import { Clock, ImageIcon, Play, Trash2, User } from "lucide-react";
 import { toast } from "sonner";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -20,6 +30,7 @@ import { formatDateTime, getInitials } from "@/lib/format";
 import { identityIdentificationSchema } from "@/lib/schemas/public-link";
 import type { ClDesigner, ClDiscipline, ClProject } from "@/lib/supabase/types";
 
+import { deletePublicSubmission } from "./actions";
 import { readIdentity, writeIdentity } from "./identity-storage";
 import { DownloadFullReportButton } from "./pdf/download-buttons";
 import { PublicFooter, type PublicOfficeSettings } from "./public-footer";
@@ -43,6 +54,7 @@ interface Props {
   publicBaseUrl: string;
   history: PublicSubmissionHistoryItem[];
   officeSettings: PublicOfficeSettings | null;
+  isProjectOwner: boolean;
 }
 
 function initials(name: string | null, email: string | null) {
@@ -58,11 +70,14 @@ export function PublicCover({
   publicBaseUrl,
   history,
   officeSettings,
+  isProjectOwner,
 }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [clientName, setClientName] = useState("");
   const [clientEmail, setClientEmail] = useState("");
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [isDeleting, startDeleting] = useTransition();
 
   useEffect(() => {
     const saved = readIdentity(token);
@@ -78,6 +93,21 @@ export function PublicCover({
     ? `${publicBaseUrl}/${officeSettings.logo_url}`
     : null;
   const officeName = officeSettings?.office_name ?? null;
+
+  function handleDeleteConfirm() {
+    if (!confirmDeleteId) return;
+    const id = confirmDeleteId;
+    setConfirmDeleteId(null);
+    startDeleting(async () => {
+      const res = await deletePublicSubmission(token, id);
+      if (res.error) {
+        toast.error(res.error);
+      } else {
+        toast.success("Preenchimento excluído.");
+        router.refresh();
+      }
+    });
+  }
 
   function handleStart() {
     const saved = readIdentity(token);
@@ -225,7 +255,7 @@ export function PublicCover({
                         {formatDateTime(item.submitted_at)}
                       </div>
                     </div>
-                    <div className="w-full sm:w-auto">
+                    <div className="flex w-full items-center gap-2 sm:w-auto">
                       <PublicSubmissionSummaryDialog
                         token={token}
                         submissionId={item.id}
@@ -233,6 +263,18 @@ export function PublicCover({
                         templateName={item.template_name}
                         projectName={project.name}
                       />
+                      {isProjectOwner ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-muted-foreground hover:text-destructive"
+                          onClick={() => setConfirmDeleteId(item.id)}
+                          disabled={isDeleting}
+                          aria-label="Excluir preenchimento"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      ) : null}
                     </div>
                   </div>
                 ))}
@@ -243,6 +285,32 @@ export function PublicCover({
       </div>
 
       <PublicFooter officeSettings={officeSettings} />
+
+      <AlertDialog
+        open={confirmDeleteId !== null}
+        onOpenChange={(o) => {
+          if (!o) setConfirmDeleteId(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir preenchimento?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita. O preenchimento e todas as respostas serão
+              removidos permanentemente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>

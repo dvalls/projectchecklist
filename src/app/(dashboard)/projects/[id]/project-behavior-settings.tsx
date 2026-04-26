@@ -39,7 +39,7 @@ export function ProjectBehaviorSettings({ projectId, initialAllow }: Props) {
         <CardTitle>Comportamento do preenchimento público</CardTitle>
         <p className="text-sm text-muted-foreground">
           Define como os itens já respondidos em preenchimentos anteriores aparecem para
-          novos clientes no link público.
+          novos clientes no link de envio.
         </p>
       </CardHeader>
       <CardContent>

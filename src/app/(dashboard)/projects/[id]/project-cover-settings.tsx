@@ -81,7 +81,9 @@ export function ProjectCoverSettings({
     <Card>
       <CardHeader>
         <CardTitle>Imagem de capa do projeto</CardTitle>
-        <p className="text-sm text-muted-foreground">Aparece na capa do link público.</p>
+        <p className="text-sm text-muted-foreground">
+          Aparece na capa do checklist enviado.
+        </p>
       </CardHeader>
       <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-start">
         <div className="relative h-40 w-full overflow-hidden rounded-md border bg-muted sm:w-64">

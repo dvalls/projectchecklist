@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Copy, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { Copy, MoreHorizontal, Pencil, Settings, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -23,6 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 import { deleteProject, duplicateProject, renameProject } from "./actions";
+import { ProjectSettingsDialog } from "./project-settings-dialog";
 
 interface ProjectCardMenuProps {
   projectId: string;
@@ -32,6 +33,7 @@ interface ProjectCardMenuProps {
 export function ProjectCardMenu({ projectId, projectName }: ProjectCardMenuProps) {
   const [renameOpen, setRenameOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [renameValue, setRenameValue] = useState(projectName);
   const [isPending, startTransition] = useTransition();
 
@@ -70,6 +72,16 @@ export function ProjectCardMenu({ projectId, projectName }: ProjectCardMenuProps
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" onClick={(e) => e.preventDefault()}>
+          <DropdownMenuItem
+            onClick={(e) => {
+              e.preventDefault();
+              setSettingsOpen(true);
+            }}
+          >
+            <Settings className="mr-2 h-4 w-4" />
+            Configurações
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
           <DropdownMenuItem
             onClick={(e) => {
               e.preventDefault();
@@ -152,6 +164,13 @@ export function ProjectCardMenu({ projectId, projectName }: ProjectCardMenuProps
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ProjectSettingsDialog
+        projectId={projectId}
+        projectName={projectName}
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+      />
     </>
   );
 }

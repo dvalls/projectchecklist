@@ -23,6 +23,8 @@ export interface Choice {
   value: string;
   recommended?: boolean;
   description?: string;
+  image_url?: string | null;
+  image_caption?: string | null;
 }
 
 export interface FieldOptionsShape {

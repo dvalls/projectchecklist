@@ -159,6 +159,7 @@ export default async function ProjectsPage() {
                 <div className="border-t px-6 py-3">
                   <ProjectPublicSubmissionsDialog
                     projectName={project.name}
+                    projectId={project.id}
                     submissions={projectSubmissions}
                     templates={projectTemplates}
                   />

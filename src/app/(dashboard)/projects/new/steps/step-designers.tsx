@@ -73,7 +73,7 @@ export function StepDesigners({
       <div>
         <h2 className="text-lg font-semibold">Projetistas</h2>
         <p className="text-sm text-muted-foreground">
-          Quem aparece como responsável na capa do link público. Você pode pular e
+          Quem aparece como responsável na capa do checklist enviado. Você pode pular e
           configurar depois.
         </p>
       </div>

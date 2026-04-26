@@ -76,7 +76,7 @@ export function ProjectDesignersPanel({
         <div>
           <CardTitle>Projetistas do projeto</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Serão exibidos na capa do link público.
+            Serão exibidos na capa do checklist enviado.
           </p>
         </div>
         {allDesigners.length === 0 ? (

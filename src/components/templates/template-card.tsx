@@ -6,9 +6,8 @@ import { useRouter } from "next/navigation";
 import { Copy, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -99,24 +98,24 @@ export function TemplateCard({
     <>
       <div className="group relative">
         <Link href={`/templates/${id}`} className="block">
-          <Card className="h-full transition-colors hover:border-primary/40">
-            <CardHeader className="pb-3 pr-10">
+          <Card className="h-full overflow-hidden transition-colors hover:border-primary/40">
+            {discipline && (
+              <div
+                className="px-4 py-1.5 text-xs font-medium"
+                style={{
+                  backgroundColor: `${discipline.color}22`,
+                  color: discipline.color,
+                }}
+              >
+                {discipline.name}
+              </div>
+            )}
+            <CardHeader className="pb-4 pr-10">
               <CardTitle className="line-clamp-1 text-base">{name}</CardTitle>
+              <p className="line-clamp-1 text-xs text-muted-foreground">
+                {projectName ?? "—"}
+              </p>
             </CardHeader>
-            <CardContent className="flex flex-wrap items-center gap-2">
-              <Badge variant="secondary">{projectName ?? "—"}</Badge>
-              {discipline ? (
-                <Badge
-                  variant="outline"
-                  style={{
-                    borderColor: discipline.color,
-                    color: discipline.color,
-                  }}
-                >
-                  {discipline.name}
-                </Badge>
-              ) : null}
-            </CardContent>
           </Card>
         </Link>
 

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Copy, FileText, Plus, Settings, User } from "lucide-react";
+import { Copy, FileText, Plus, User } from "lucide-react";
 
 import { BackLink } from "@/components/layout/back-link";
 import { BUCKETS } from "@/lib/constants";
@@ -123,12 +123,6 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
             initialLinks={(links ?? []) as ClPublicLink[]}
             templates={typedTemplates}
           />
-          <Button asChild size="sm" variant="outline">
-            <Link href={`/projects/${project.id}/settings`}>
-              <Settings className="mr-2 h-4 w-4" />
-              Configurações
-            </Link>
-          </Button>
         </div>
       </div>
 

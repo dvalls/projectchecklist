@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { BUCKETS, OFFICE_PUBLIC_FIELDS } from "@/lib/constants";
 import { getActivePublicLink } from "@/lib/public-link";
 import { getPublicBucketBaseUrl } from "@/lib/storage";
+import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import type {
   ClDesigner,
@@ -29,6 +30,12 @@ export default async function PublicChecklistCoverPage({
 
   const { link: typedLink, project } = lookup;
   const supabase = createServiceRoleClient();
+
+  const supabaseAuth = createClient();
+  const {
+    data: { user },
+  } = await supabaseAuth.auth.getUser();
+  const isProjectOwner = Boolean(user && user.id === project.created_by);
 
   const [
     { data: disciplines },
@@ -135,6 +142,7 @@ export default async function PublicChecklistCoverPage({
       publicBaseUrl={publicBaseUrl}
       history={history}
       officeSettings={officeSettings}
+      isProjectOwner={isProjectOwner}
     />
   );
 }

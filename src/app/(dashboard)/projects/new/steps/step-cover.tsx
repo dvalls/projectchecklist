@@ -82,8 +82,8 @@ export function StepCover({
       <div>
         <h2 className="text-lg font-semibold">Capa do projeto</h2>
         <p className="text-sm text-muted-foreground">
-          Imagem que aparece na lista de projetos e na capa do link público. Você pode
-          pular esta etapa.
+          Imagem que aparece na lista de projetos e na capa do checklist enviado. Você
+          pode pular esta etapa.
         </p>
       </div>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start">

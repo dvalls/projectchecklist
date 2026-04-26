@@ -12,6 +12,7 @@ import {
 } from "./draft-progress";
 
 import { ImageDisplayField } from "@/components/form-builder/field-preview";
+import { PhotoHintButton } from "@/components/form-builder/photo-hint-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -603,51 +604,68 @@ function MatrixRenderer({
                   </tr>
                 </thead>
                 <tbody>
-                  {secRows.map((field) => (
-                    <tr key={field.id} className="align-top">
-                      <td className="sticky left-0 z-10 w-[200px] bg-background p-2 text-sm">
-                        <div className="font-medium">
-                          {field.label}
-                          {field.required ? (
-                            <span className="ml-1 text-destructive-foreground">*</span>
-                          ) : null}
-                        </div>
-                        {field.help_text ? (
-                          <div className="text-xs italic text-muted-foreground">
-                            {field.help_text}
-                          </div>
-                        ) : null}
-                      </td>
-                      {environments.map((env) => {
-                        const key = makeFieldKey(field.id, env);
-                        const visible = evaluateVisible(field.visible_when, values, env);
-                        const hasPrevious = Boolean(previousByMatrix[field.id]?.[env]);
-                        const locked = hasPrevious && !allowResubmit;
-                        return (
-                          <td
-                            key={env}
-                            className={
-                              "border-l border-t p-2 align-top" +
-                              (hasPrevious ? " bg-muted/30" : "")
-                            }
-                          >
-                            {visible ? (
-                              <FieldInput
-                                field={field}
-                                value={values[key]}
-                                compact
-                                hasPrevious={hasPrevious}
-                                locked={locked}
-                                onChange={(patch) => onChange(key, patch)}
+                  {secRows.map((field) => {
+                    const fieldOpts =
+                      (field.options as Exclude<FieldOptions, null>) ?? {};
+                    const fieldImage = fieldOpts.image_url ?? null;
+                    return (
+                      <tr key={field.id} className="align-top">
+                        <td className="sticky left-0 z-10 w-[200px] bg-background p-2 text-sm">
+                          <div className="flex flex-wrap items-center gap-1.5 font-medium">
+                            <span>{field.label}</span>
+                            {field.required ? (
+                              <span className="text-destructive-foreground">*</span>
+                            ) : null}
+                            {fieldImage ? (
+                              <PhotoHintButton
+                                imagePath={fieldImage}
+                                caption={fieldOpts.image_caption ?? null}
+                                alt={field.label}
+                                size="xs"
                               />
-                            ) : (
-                              <span className="text-xs text-muted-foreground">—</span>
-                            )}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
+                            ) : null}
+                          </div>
+                          {field.help_text ? (
+                            <div className="text-xs italic text-muted-foreground">
+                              {field.help_text}
+                            </div>
+                          ) : null}
+                        </td>
+                        {environments.map((env) => {
+                          const key = makeFieldKey(field.id, env);
+                          const visible = evaluateVisible(
+                            field.visible_when,
+                            values,
+                            env,
+                          );
+                          const hasPrevious = Boolean(previousByMatrix[field.id]?.[env]);
+                          const locked = hasPrevious && !allowResubmit;
+                          return (
+                            <td
+                              key={env}
+                              className={
+                                "border-l border-t p-2 align-top" +
+                                (hasPrevious ? " bg-muted/30" : "")
+                              }
+                            >
+                              {visible ? (
+                                <FieldInput
+                                  field={field}
+                                  value={values[key]}
+                                  compact
+                                  hasPrevious={hasPrevious}
+                                  locked={locked}
+                                  onChange={(patch) => onChange(key, patch)}
+                                />
+                              ) : (
+                                <span className="text-xs text-muted-foreground">—</span>
+                              )}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -821,6 +839,15 @@ function FieldInput({
   ) : null;
 
   const containerClassName = "space-y-1.5" + (locked ? " opacity-90" : "");
+  const fieldPhoto = opts.image_url ?? null;
+  const fieldPhotoButton = fieldPhoto ? (
+    <PhotoHintButton
+      imagePath={fieldPhoto}
+      caption={opts.image_caption ?? null}
+      alt={field.label}
+      size="sm"
+    />
+  ) : null;
 
   return (
     <div className={containerClassName}>
@@ -832,6 +859,7 @@ function FieldInput({
               <span className="ml-1 text-destructive-foreground">*</span>
             ) : null}
           </Label>
+          {fieldPhotoButton}
           {previousBadge}
         </div>
       ) : previousBadge && field.type !== "checkbox" ? (
@@ -901,6 +929,7 @@ function FieldInput({
                 <span className="ml-1 text-destructive-foreground">*</span>
               ) : null}
             </span>
+            {!compact ? fieldPhotoButton : null}
             {previousBadge}
           </label>
           {!compact && field.help_text ? (
@@ -932,8 +961,18 @@ function FieldInput({
                     updateGroup({ ...groupValue, selected: nextSelected });
                   }}
                 />
-                <span className="min-w-0 break-words">
-                  {c.label}
+                <span className="min-w-0 flex-1 break-words">
+                  <span className="inline-flex flex-wrap items-center gap-1.5">
+                    <span>{c.label}</span>
+                    {c.image_url ? (
+                      <PhotoHintButton
+                        imagePath={c.image_url}
+                        caption={c.image_caption ?? null}
+                        alt={c.label}
+                        size="xs"
+                      />
+                    ) : null}
+                  </span>
                   {c.description ? (
                     <span className="mt-0.5 block text-xs italic text-muted-foreground">
                       {c.description}
@@ -969,22 +1008,58 @@ function FieldInput({
       ) : null}
 
       {field.type === "select" ? (
-        <Select
-          value={value?.value ?? ""}
-          disabled={locked}
-          onValueChange={(v) => onChange({ value: v })}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Selecione..." />
-          </SelectTrigger>
-          <SelectContent>
-            {choices.map((c) => (
-              <SelectItem key={c.value} value={c.value}>
-                {c.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="space-y-1.5">
+          <Select
+            value={value?.value ?? ""}
+            disabled={locked}
+            onValueChange={(v) => onChange({ value: v })}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Selecione..." />
+            </SelectTrigger>
+            <SelectContent>
+              {choices.map((c) => (
+                <SelectItem key={c.value} value={c.value}>
+                  {c.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {(() => {
+            const selected = choices.find((c) => c.value === value?.value);
+            if (selected?.image_url) {
+              return (
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <PhotoHintButton
+                    imagePath={selected.image_url}
+                    caption={selected.image_caption ?? null}
+                    alt={selected.label}
+                    size="sm"
+                  />
+                  <span>Foto da opção selecionada</span>
+                </div>
+              );
+            }
+            const withPhotos = choices.filter((c) => c.image_url);
+            if (withPhotos.length === 0) return null;
+            return (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                <span>Ver fotos:</span>
+                {withPhotos.map((c) => (
+                  <span key={c.value} className="inline-flex items-center gap-1">
+                    <PhotoHintButton
+                      imagePath={c.image_url}
+                      caption={c.image_caption ?? null}
+                      alt={c.label}
+                      size="xs"
+                    />
+                    <span>{c.label}</span>
+                  </span>
+                ))}
+              </div>
+            );
+          })()}
+        </div>
       ) : null}
 
       {field.type === "radio" ? (
@@ -1005,6 +1080,14 @@ function FieldInput({
                 onChange={() => onChange({ value: c.value })}
               />
               <span className="min-w-0 break-words">{c.label}</span>
+              {c.image_url ? (
+                <PhotoHintButton
+                  imagePath={c.image_url}
+                  caption={c.image_caption ?? null}
+                  alt={c.label}
+                  size="xs"
+                />
+              ) : null}
             </label>
           ))}
         </div>

@@ -301,7 +301,7 @@ export function PublicFormsList({
               const Icon = getDisciplineIcon(discipline?.name);
               return (
                 <section key={discipline?.id ?? "no-discipline"}>
-                  <div className="mb-2 flex items-center gap-2">
+                  <div className="mb-2 mt-2 flex items-center gap-2 pt-[23px]">
                     <Icon
                       className="h-4 w-4"
                       style={discipline ? { color: discipline.color } : undefined}

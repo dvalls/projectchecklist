@@ -18,7 +18,7 @@ export function SettingsTabs() {
 
   return (
     <div className="border-b">
-      <nav className="-mb-px flex gap-1">
+      <nav className="-mb-px flex">
         {tabs.map((tab) => {
           const isActive = pathname === tab.href || pathname.startsWith(`${tab.href}/`);
           const Icon = tab.icon;
@@ -27,14 +27,14 @@ export function SettingsTabs() {
               key={tab.href}
               href={tab.href}
               className={cn(
-                "flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium transition-colors",
+                "flex flex-1 flex-col items-center gap-1 border-b-2 px-2 py-2 text-sm font-medium transition-colors sm:flex-none sm:flex-row sm:justify-start sm:gap-2 sm:px-4 sm:py-2.5",
                 isActive
                   ? "border-primary text-foreground"
                   : "border-transparent text-muted-foreground hover:text-foreground",
               )}
             >
-              <Icon className="h-4 w-4" />
-              {tab.label}
+              <Icon className="h-4 w-4 shrink-0" />
+              <span className="text-xs sm:text-sm">{tab.label}</span>
             </Link>
           );
         })}

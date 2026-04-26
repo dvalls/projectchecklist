@@ -17,6 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { getTemplateAssetPublicUrl } from "@/lib/storage/template-assets";
 import type { ClFormField, FieldOptions } from "@/lib/supabase/types";
 
+import { PhotoHintButton } from "./photo-hint-button";
 import { ChoiceLabel, RecommendedBadge } from "./shared";
 
 function InfoBlock({ content }: { content: string }) {
@@ -70,6 +71,8 @@ export function FieldPreview({
     );
   }
 
+  const fieldImagePath = opts.image_url ?? null;
+
   return (
     <div className={`space-y-1.5 ${hidden ? "opacity-60" : ""}`}>
       {field.type !== "checkbox" ? (
@@ -81,6 +84,14 @@ export function FieldPreview({
                 <span className="ml-1 text-destructive-foreground">*</span>
               ) : null}
             </Label>
+            {fieldImagePath ? (
+              <PhotoHintButton
+                imagePath={fieldImagePath}
+                caption={opts.image_caption ?? null}
+                alt={field.label || "Foto de apoio"}
+                size="xs"
+              />
+            ) : null}
             {hidden ? (
               <span
                 className="inline-flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground"
@@ -117,6 +128,14 @@ export function FieldPreview({
                 <span className="ml-1 text-destructive-foreground">*</span>
               ) : null}
             </span>
+            {fieldImagePath ? (
+              <PhotoHintButton
+                imagePath={fieldImagePath}
+                caption={opts.image_caption ?? null}
+                alt={field.label || "Foto de apoio"}
+                size="xs"
+              />
+            ) : null}
             {hidden ? (
               <span
                 className="inline-flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground"
@@ -144,17 +163,22 @@ export function FieldPreview({
             <p className="text-xs text-muted-foreground">(adicione opções)</p>
           ) : (
             choices.map((c) => (
-              <label
-                key={c.value}
-                className="flex gap-2 text-sm text-muted-foreground"
-              >
+              <label key={c.value} className="flex gap-2 text-sm text-muted-foreground">
                 <Checkbox disabled className="mt-0.5 shrink-0" />
-                <span className="min-w-0 break-words">
-                  <ChoiceLabel label={c.label} recommended={c.recommended} />
+                <span className="min-w-0 flex-1 break-words">
+                  <span className="inline-flex flex-wrap items-center gap-1.5">
+                    <ChoiceLabel label={c.label} recommended={c.recommended} />
+                    {c.image_url ? (
+                      <PhotoHintButton
+                        imagePath={c.image_url}
+                        caption={c.image_caption ?? null}
+                        alt={c.label}
+                        size="xs"
+                      />
+                    ) : null}
+                  </span>
                   {c.description ? (
-                    <span className="mt-0.5 block text-xs italic">
-                      {c.description}
-                    </span>
+                    <span className="mt-0.5 block text-xs italic">{c.description}</span>
                   ) : null}
                 </span>
               </label>
@@ -170,18 +194,38 @@ export function FieldPreview({
         </div>
       ) : null}
       {field.type === "select" ? (
-        <Select disabled>
-          <SelectTrigger>
-            <SelectValue placeholder="Selecione..." />
-          </SelectTrigger>
-          <SelectContent>
-            {choices.map((c) => (
-              <SelectItem key={c.value} value={c.value}>
-                <ChoiceLabel label={c.label} recommended={c.recommended} />
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="space-y-1.5">
+          <Select disabled>
+            <SelectTrigger>
+              <SelectValue placeholder="Selecione..." />
+            </SelectTrigger>
+            <SelectContent>
+              {choices.map((c) => (
+                <SelectItem key={c.value} value={c.value}>
+                  <ChoiceLabel label={c.label} recommended={c.recommended} />
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {choices.some((c) => c.image_url) ? (
+            <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+              <span>Fotos das opções:</span>
+              {choices
+                .filter((c) => c.image_url)
+                .map((c) => (
+                  <span key={c.value} className="inline-flex items-center gap-1">
+                    <PhotoHintButton
+                      imagePath={c.image_url}
+                      caption={c.image_caption ?? null}
+                      alt={c.label}
+                      size="xs"
+                    />
+                    <span>{c.label}</span>
+                  </span>
+                ))}
+            </div>
+          ) : null}
+        </div>
       ) : null}
       {field.type === "radio" ? (
         <div className="space-y-1.5 pt-1">
@@ -195,6 +239,14 @@ export function FieldPreview({
               >
                 <input type="radio" disabled />
                 <ChoiceLabel label={c.label} recommended={c.recommended} />
+                {c.image_url ? (
+                  <PhotoHintButton
+                    imagePath={c.image_url}
+                    caption={c.image_caption ?? null}
+                    alt={c.label}
+                    size="xs"
+                  />
+                ) : null}
               </label>
             ))
           )}

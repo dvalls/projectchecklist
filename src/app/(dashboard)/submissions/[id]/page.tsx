@@ -147,7 +147,7 @@ export default async function SubmissionDetailPage({
               </span>
             ) : null}
             {typedSubmission.public_link_id ? (
-              <Badge variant="outline">Preenchido por link público</Badge>
+              <Badge variant="outline">Preenchido via link de envio</Badge>
             ) : null}
           </div>
         </CardHeader>
