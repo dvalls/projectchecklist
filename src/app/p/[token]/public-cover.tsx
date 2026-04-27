@@ -31,6 +31,7 @@ import { identityIdentificationSchema } from "@/lib/schemas/public-link";
 import type { ClDesigner, ClDiscipline, ClProject } from "@/lib/supabase/types";
 
 import { deletePublicSubmission } from "./actions";
+import { clearDraftProgress, clearDraftSubmission } from "./draft-progress";
 import { readIdentity, writeIdentity } from "./identity-storage";
 import { DownloadFullReportButton } from "./pdf/download-buttons";
 import { PublicFooter, type PublicOfficeSettings } from "./public-footer";
@@ -97,12 +98,17 @@ export function PublicCover({
   function handleDeleteConfirm() {
     if (!confirmDeleteId) return;
     const id = confirmDeleteId;
+    const item = history.find((h) => h.id === id);
     setConfirmDeleteId(null);
     startDeleting(async () => {
       const res = await deletePublicSubmission(token, id);
       if (res.error) {
         toast.error(res.error);
       } else {
+        if (item?.client_email) {
+          clearDraftProgress(token, item.template_id, item.client_email);
+          clearDraftSubmission(token, item.template_id, item.client_email);
+        }
         toast.success("Preenchimento excluído.");
         router.refresh();
       }

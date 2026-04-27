@@ -87,8 +87,10 @@ export async function setTemplatePublic(templateId: string, isPublic: boolean) {
   if (error || !data) {
     return fail(error?.message ?? "Erro ao atualizar.");
   }
-  const typed = data as { project_id: string };
-  revalidatePath(`/projects/${typed.project_id}`);
+  const typed = data as { project_id: string | null };
+  if (typed.project_id) {
+    revalidatePath(`/projects/${typed.project_id}`);
+  }
   return ok();
 }
 

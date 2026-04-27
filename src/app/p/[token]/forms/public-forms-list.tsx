@@ -3,7 +3,15 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { CheckCircle2, ChevronRight, History, Lock, LogOut, Send } from "lucide-react";
+import {
+  CheckCircle2,
+  ChevronRight,
+  Eraser,
+  History,
+  Lock,
+  LogOut,
+  Send,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { BackLink } from "@/components/layout/back-link";
@@ -11,7 +19,6 @@ import { getDisciplineIcon } from "@/lib/disciplines/icon";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 
 import type {
   ClDiscipline,
@@ -23,6 +30,7 @@ import type {
 import { createPublicSubmission } from "../actions";
 import { clearIdentity, readIdentity } from "../identity-storage";
 import {
+  clearAllDraftsForToken,
   clearDraftProgress,
   clearDraftSubmission,
   readDraftProgress,
@@ -42,6 +50,7 @@ interface Props {
   hasPreviousByTemplate: Record<string, boolean>;
   allowResubmit: boolean;
   officeSettings: PublicOfficeSettings | null;
+  isProjectOwner?: boolean;
 }
 
 export function PublicFormsList({
@@ -56,6 +65,7 @@ export function PublicFormsList({
   hasPreviousByTemplate,
   allowResubmit,
   officeSettings,
+  isProjectOwner = false,
 }: Props) {
   const router = useRouter();
   const [identity, setIdentity] = useState<{
@@ -81,11 +91,15 @@ export function PublicFormsList({
     const set = new Set<string>();
     for (const s of submissions) {
       if (s.status === "submitted" && s.client_email?.toLowerCase() === email) {
-        set.add(s.template_id);
+        const answered = answeredAllByTemplate[s.template_id] ?? 0;
+        const total = totalAllByTemplate[s.template_id] ?? 0;
+        if (total === 0 || answered >= total) {
+          set.add(s.template_id);
+        }
       }
     }
     return set;
-  }, [submissions, identity]);
+  }, [submissions, identity, answeredAllByTemplate, totalAllByTemplate]);
 
   const [progressTick, setProgressTick] = useState(0);
 
@@ -193,6 +207,20 @@ export function PublicFormsList({
     router.push(`/p/${token}`);
   }
 
+  function handleClearLocalDrafts() {
+    const removed = clearAllDraftsForToken(token);
+    if (removed === 0) {
+      toast.info("Nenhum rascunho local encontrado neste navegador.");
+    } else {
+      toast.success(
+        removed === 1
+          ? "1 rascunho local removido."
+          : `${removed} rascunhos locais removidos.`,
+      );
+    }
+    router.refresh();
+  }
+
   function handleSubmitAll() {
     if (!identity) return;
     if (pendingTemplates.length === 0) {
@@ -246,8 +274,7 @@ export function PublicFormsList({
         clearDraftSubmission(token, template.id, identity.client_email);
       }
 
-      toast.success("Todos os formulários foram enviados.");
-      router.refresh();
+      router.push(`/p/${token}/submitted`);
     });
   }
 
@@ -286,6 +313,26 @@ export function PublicFormsList({
             Escolha os formulários abaixo e preencha na ordem que preferir.
           </p>
         </div>
+
+        {isProjectOwner ? (
+          <div className="flex flex-col gap-3 rounded-md border border-dashed bg-muted/30 p-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+            <p>
+              Visualizando como dono do projeto. As contagens de
+              &quot;respondidas&quot; podem incluir rascunhos salvos neste navegador,
+              mesmo após excluir os envios do servidor.
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleClearLocalDrafts}
+              className="self-start sm:self-auto"
+            >
+              <Eraser className="mr-1.5 h-3.5 w-3.5" />
+              Limpar rascunhos locais
+            </Button>
+          </div>
+        ) : null}
 
         {templates.length === 0 ? (
           <Card>
@@ -327,12 +374,22 @@ export function PublicFormsList({
                       const safeDone = Math.min(progress.done, progress.total);
                       const safeDoneAll = Math.min(progress.doneAll, progress.totalAll);
                       const remainingAll = progress.totalAll - safeDoneAll;
-                      const progressValue =
+                      const serverAnsweredAll = Math.min(
+                        answeredAllByTemplate[t.id] ?? 0,
+                        progress.totalAll,
+                      );
+                      const previousAnswered = completed
+                        ? safeDoneAll
+                        : Math.min(serverAnsweredAll, safeDoneAll);
+                      const currentAnswered = Math.max(0, safeDoneAll - previousAnswered);
+                      const previousPct =
                         progress.totalAll > 0
-                          ? Math.round((safeDoneAll / progress.totalAll) * 100)
-                          : completed
-                            ? 100
-                            : 0;
+                          ? (previousAnswered / progress.totalAll) * 100
+                          : 0;
+                      const currentPct =
+                        progress.totalAll > 0
+                          ? (currentAnswered / progress.totalAll) * 100
+                          : 0;
                       const showProgressBar = progress.totalAll > 0 || completed;
                       return (
                         <Link
@@ -411,16 +468,35 @@ export function PublicFormsList({
                                       "respondida",
                                       "respondidas",
                                     )}
+                                    {previousAnswered > 0 && currentAnswered > 0 ? (
+                                      <span className="ml-1 text-[11px] text-muted-foreground/80">
+                                        ({previousAnswered} antes
+                                        {" \u00b7 "}
+                                        {currentAnswered} agora)
+                                      </span>
+                                    ) : null}
                                   </span>
                                   <span>
                                     {formatQuestionCount(remainingAll, "falta", "faltam")}
                                   </span>
                                 </div>
-                                <Progress
-                                  value={progressValue}
-                                  aria-label={`${safeDoneAll} de ${progress.totalAll} perguntas respondidas`}
-                                  className="h-1.5"
-                                />
+                                <div
+                                  role="progressbar"
+                                  aria-valuemin={0}
+                                  aria-valuemax={progress.totalAll}
+                                  aria-valuenow={safeDoneAll}
+                                  aria-label={`${safeDoneAll} de ${progress.totalAll} perguntas respondidas — ${previousAnswered} em envios anteriores e ${currentAnswered} preenchidas agora`}
+                                  className="flex h-1.5 w-full overflow-hidden rounded-full bg-secondary"
+                                >
+                                  <span
+                                    className="h-full bg-primary/40 transition-all"
+                                    style={{ width: `${previousPct}%` }}
+                                  />
+                                  <span
+                                    className="h-full bg-primary transition-all"
+                                    style={{ width: `${currentPct}%` }}
+                                  />
+                                </div>
                               </CardFooter>
                             ) : null}
                           </Card>

@@ -33,7 +33,7 @@ import {
 interface TemplateCardProps {
   id: string;
   name: string;
-  projectId: string;
+  projectId: string | null;
   projectName: string | null;
   discipline: { name: string; color: string } | null;
 }

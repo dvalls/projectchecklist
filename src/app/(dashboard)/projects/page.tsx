@@ -52,6 +52,7 @@ export default async function ProjectsPage() {
 
   const templatesByProject = new Map<string, ClFormTemplate[]>();
   for (const t of (templates ?? []) as ClFormTemplate[]) {
+    if (!t.project_id) continue;
     const list = templatesByProject.get(t.project_id) ?? [];
     list.push(t);
     templatesByProject.set(t.project_id, list);

@@ -30,6 +30,9 @@ export default async function NewSubmissionPage({
 
   if (!template) notFound();
 
+  const typedTemplate = template as ClFormTemplate;
+  if (typedTemplate.is_template || !typedTemplate.project_id) notFound();
+
   const [{ data: sections }, { data: fields }] = await Promise.all([
     supabase
       .from("cl_form_sections")
@@ -43,7 +46,6 @@ export default async function NewSubmissionPage({
       .order("position"),
   ]);
 
-  const typedTemplate = template as ClFormTemplate;
   const typedSections = (sections ?? []) as ClFormSection[];
   const typedFields = (fields ?? []) as ClFormField[];
 

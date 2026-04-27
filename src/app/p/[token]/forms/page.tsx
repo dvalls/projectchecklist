@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 
 import { OFFICE_PUBLIC_FIELDS } from "@/lib/constants";
 import { getActivePublicLink } from "@/lib/public-link";
+import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import type {
   ClDiscipline,
@@ -31,6 +32,12 @@ export default async function PublicFormsListPage({
 
   const { link: typedLink, project } = lookup;
   const supabase = createServiceRoleClient();
+
+  const supabaseAuth = createClient();
+  const {
+    data: { user },
+  } = await supabaseAuth.auth.getUser();
+  const isProjectOwner = Boolean(user && user.id === project.created_by);
 
   const [
     { data: disciplines },
@@ -200,6 +207,7 @@ export default async function PublicFormsListPage({
       hasPreviousByTemplate={hasPreviousByTemplate}
       allowResubmit={allowResubmit}
       officeSettings={officeSettings}
+      isProjectOwner={isProjectOwner}
     />
   );
 }

@@ -23,6 +23,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import {
+  BookmarkPlus,
   ChevronDown,
   ChevronRight,
   MoreVertical,
@@ -84,6 +85,7 @@ import type {
 import {
   deleteTemplate,
   renameTemplate,
+  saveAsTemplate,
   saveTemplate,
   type FieldInput,
   type SectionInput,
@@ -217,6 +219,7 @@ export function TemplateBuilder({
   const [isSaving, startSaving] = useTransition();
   const [isRenaming, startRenaming] = useTransition();
   const [isDeleting, startDeleting] = useTransition();
+  const [isSavingAsTemplate, startSavingAsTemplate] = useTransition();
 
   const router = useRouter();
 
@@ -404,7 +407,23 @@ export function TemplateBuilder({
         toast.error(res.error);
       } else {
         toast.success("Formulário apagado.");
-        router.push(`/projects/${template.project_id}`);
+        router.push(
+          template.project_id
+            ? `/projects/${template.project_id}`
+            : "/settings/forms",
+        );
+      }
+    });
+  }
+
+  function handleSaveAsTemplate() {
+    startSavingAsTemplate(async () => {
+      const res = await saveAsTemplate(template.id);
+      if (res?.error) {
+        toast.error(res.error);
+      } else {
+        toast.success("Salvo como template em Configurações > Formulários.");
+        router.refresh();
       }
     });
   }
@@ -511,6 +530,15 @@ export function TemplateBuilder({
                 <Pencil className="mr-2 h-4 w-4" />
                 Renomear
               </DropdownMenuItem>
+              {!template.is_template ? (
+                <DropdownMenuItem
+                  onClick={handleSaveAsTemplate}
+                  disabled={isSavingAsTemplate}
+                >
+                  <BookmarkPlus className="mr-2 h-4 w-4" />
+                  {isSavingAsTemplate ? "Salvando…" : "Salvar como template"}
+                </DropdownMenuItem>
+              ) : null}
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="text-destructive focus:bg-destructive focus:text-destructive-foreground"

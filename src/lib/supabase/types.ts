@@ -69,13 +69,14 @@ export interface ClDiscipline {
 
 export interface ClFormTemplate {
   id: string;
-  project_id: string;
+  project_id: string | null;
   discipline_id: string | null;
   name: string;
   description: string | null;
   layout_mode: LayoutMode;
   environments: string[] | null;
   is_public: boolean;
+  is_template: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -203,7 +204,7 @@ export type Database = {
       };
       cl_form_templates: {
         Row: ClFormTemplate;
-        Insert: WithDefaults<ClFormTemplate, "project_id" | "name">;
+        Insert: WithDefaults<ClFormTemplate, "name">;
         Update: Partial<ClFormTemplate>;
         Relationships: Relationships;
       };

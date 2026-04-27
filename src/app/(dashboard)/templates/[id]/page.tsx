@@ -32,16 +32,22 @@ export default async function TemplateEditorPage({ params }: { params: { id: str
       .order("position"),
   ]);
 
+  const typedTemplate = template as ClFormTemplate;
+  const backHref = typedTemplate.project_id
+    ? `/projects/${typedTemplate.project_id}`
+    : "/settings/forms";
+  const backLabel = typedTemplate.project_id
+    ? "Voltar para o projeto"
+    : "Voltar para templates";
+
   return (
     <div className="space-y-6">
       <div>
-        <BackLink href={`/projects/${(template as ClFormTemplate).project_id}`}>
-          Voltar para o projeto
-        </BackLink>
+        <BackLink href={backHref}>{backLabel}</BackLink>
       </div>
 
       <TemplateBuilder
-        template={template as ClFormTemplate}
+        template={typedTemplate}
         initialSections={(sections ?? []) as ClFormSection[]}
         initialFields={(fields ?? []) as ClFormField[]}
       />

@@ -12,27 +12,26 @@ export default async function TemplatesPage() {
   const supabase = createClient();
   const { data: templates } = await supabase
     .from("cl_form_templates")
-    .select("*, cl_projects(name), cl_disciplines(name, color)")
+    .select("*, cl_disciplines(name, color)")
+    .eq("is_template", true)
     .order("created_at", { ascending: false });
 
   return (
     <div>
-      <PageHeader title="Formulários" description="Todos os formulários do sistema." />
+      <PageHeader
+        title="Formulários"
+        description="Biblioteca de templates reutilizáveis em qualquer projeto."
+      />
 
       {!templates || templates.length === 0 ? (
         <EmptyState
           icon={<FileText className="h-6 w-6" />}
-          title="Nenhum formulário"
-          description="Crie formulários dentro de um projeto."
+          title="Nenhum template"
+          description='Dentro de um formulário, use o menu "Mais opções" → "Salvar como template" para reaproveitá-lo em outros projetos.'
         />
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {templates.map((t) => {
-            const project = (
-              t as unknown as {
-                cl_projects: { name: string } | null;
-              }
-            ).cl_projects;
             const discipline = (
               t as unknown as {
                 cl_disciplines: { name: string; color: string } | null;
@@ -43,8 +42,8 @@ export default async function TemplatesPage() {
                 key={t.id}
                 id={t.id}
                 name={t.name}
-                projectId={t.project_id}
-                projectName={project?.name ?? null}
+                projectId={null}
+                projectName={null}
                 discipline={discipline ?? null}
               />
             );

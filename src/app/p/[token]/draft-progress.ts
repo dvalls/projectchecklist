@@ -173,3 +173,32 @@ export function clearDraftSubmission(token: string, templateId: string, email: s
     // ignore
   }
 }
+
+export function clearAllDraftsForToken(token: string): number {
+  if (typeof window === "undefined") return 0;
+  try {
+    const progressPrefix = `checklist.public.progress.${token}.`;
+    const submissionPrefix = `checklist.public.submission.${token}.`;
+    const toRemove: string[] = [];
+    for (let i = 0; i < window.localStorage.length; i += 1) {
+      const key = window.localStorage.key(i);
+      if (!key) continue;
+      if (key.startsWith(progressPrefix) || key.startsWith(submissionPrefix)) {
+        toRemove.push(key);
+      }
+    }
+    for (const key of toRemove) {
+      window.localStorage.removeItem(key);
+    }
+    if (toRemove.length > 0) {
+      window.dispatchEvent(
+        new CustomEvent("checklist-progress", {
+          detail: { token, templateId: null, email: null },
+        }),
+      );
+    }
+    return toRemove.length;
+  } catch {
+    return 0;
+  }
+}

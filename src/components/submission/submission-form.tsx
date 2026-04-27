@@ -87,6 +87,13 @@ export function SubmissionForm({ template, sections, fields }: Props) {
   }
 
   function handleSubmit(asDraft: boolean) {
+    if (!template.project_id) {
+      toast.error(
+        "Templates da biblioteca não podem ser respondidos. Importe-o em um projeto primeiro.",
+      );
+      return;
+    }
+    const projectId = template.project_id;
     const inputs: SubmissionValueInput[] = [];
     const matrixInputs: SubmissionMatrixValueInput[] = [];
 
@@ -132,7 +139,7 @@ export function SubmissionForm({ template, sections, fields }: Props) {
     startSubmitting(async () => {
       const res = await createSubmission({
         template_id: template.id,
-        project_id: template.project_id,
+        project_id: projectId,
         values: inputs,
         matrix_values: matrixInputs,
         asDraft,

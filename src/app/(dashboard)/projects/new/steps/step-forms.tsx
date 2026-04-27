@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { Copy, FileText, FolderOpen, Loader2, Plus, Search, X } from "lucide-react";
+import { Copy, FileText, Loader2, Plus, Search, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -72,22 +72,9 @@ export function StepForms({
     const q = query.trim().toLowerCase();
     if (!q) return importable;
     return importable.filter((t) =>
-      [t.name, t.project_name, t.discipline_name ?? ""]
-        .join(" ")
-        .toLowerCase()
-        .includes(q),
+      [t.name, t.discipline_name ?? ""].join(" ").toLowerCase().includes(q),
     );
   }, [importable, query]);
-
-  const grouped = useMemo(() => {
-    const map = new Map<string, ImportableTemplate[]>();
-    for (const t of filtered) {
-      const arr = map.get(t.project_name) ?? [];
-      arr.push(t);
-      map.set(t.project_name, arr);
-    }
-    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0], "pt-BR"));
-  }, [filtered]);
 
   function handleImport(t: ImportableTemplate) {
     setPendingImportIds((prev) => new Set(prev).add(t.id));
@@ -151,8 +138,8 @@ export function StepForms({
       <div>
         <h2 className="text-lg font-semibold">Formulários iniciais</h2>
         <p className="text-sm text-muted-foreground">
-          Adicione formulários ao projeto importando de outros projetos ou criando novos
-          em branco. Você pode pular e configurar depois.
+          Adicione formulários ao projeto importando da biblioteca de templates ou
+          criando novos em branco. Você pode pular e configurar depois.
         </p>
       </div>
 
@@ -205,7 +192,7 @@ export function StepForms({
           )}
         >
           <Copy className="mr-1.5 inline h-3.5 w-3.5" />
-          Importar existentes
+          Importar da biblioteca
         </button>
         <button
           type="button"
@@ -229,80 +216,70 @@ export function StepForms({
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Buscar por nome, projeto ou disciplina..."
+              placeholder="Buscar por nome ou disciplina..."
               className="pl-9"
             />
           </div>
 
-          <div className="max-h-[360px] space-y-4 overflow-y-auto rounded-md border p-3">
+          <div className="max-h-[360px] space-y-1.5 overflow-y-auto rounded-md border p-3">
             {importable.length === 0 ? (
               <p className="py-6 text-center text-sm text-muted-foreground">
-                Nenhum formulário disponível em outros projetos.
+                Nenhum template disponível na biblioteca.
               </p>
-            ) : grouped.length === 0 ? (
+            ) : filtered.length === 0 ? (
               <p className="py-6 text-center text-sm text-muted-foreground">
-                Nenhum formulário corresponde à busca.
+                Nenhum template corresponde à busca.
               </p>
             ) : (
-              grouped.map(([projectName, items]) => (
-                <div key={projectName} className="space-y-2">
-                  <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    <FolderOpen className="h-3.5 w-3.5" />
-                    {projectName}
-                  </div>
-                  <div className="space-y-1.5">
-                    {items.map((t) => {
-                      const isPending = pendingImportIds.has(t.id);
-                      const alreadyImported = importedSourceIds.has(t.id);
-                      return (
-                        <div
-                          key={t.id}
-                          className="flex items-center justify-between gap-3 rounded-md border bg-card px-3 py-2"
-                        >
-                          <div className="min-w-0 flex-1">
-                            <div className="truncate text-sm font-medium">{t.name}</div>
-                            <div className="mt-0.5">
-                              {t.discipline_name ? (
-                                <Badge
-                                  variant="outline"
-                                  className="text-[10px]"
-                                  style={{
-                                    borderColor: t.discipline_color ?? undefined,
-                                    color: t.discipline_color ?? undefined,
-                                  }}
-                                >
-                                  {t.discipline_name}
-                                </Badge>
-                              ) : (
-                                <Badge variant="secondary" className="text-[10px]">
-                                  Sem disciplina
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
-                          <Button
-                            size="sm"
+              filtered.map((t) => {
+                const isPending = pendingImportIds.has(t.id);
+                const alreadyImported = importedSourceIds.has(t.id);
+                return (
+                  <div
+                    key={t.id}
+                    className="flex items-center justify-between gap-3 rounded-md border bg-card px-3 py-2"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-medium">{t.name}</div>
+                      <div className="mt-0.5">
+                        {t.discipline_name ? (
+                          <Badge
                             variant="outline"
-                            disabled={isPending || alreadyImported}
-                            onClick={() => handleImport(t)}
+                            className="text-[10px]"
+                            style={{
+                              borderColor: t.discipline_color ?? undefined,
+                              color: t.discipline_color ?? undefined,
+                            }}
                           >
-                            {isPending ? (
-                              <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                            ) : (
-                              <Copy className="mr-1.5 h-3.5 w-3.5" />
-                            )}
-                            {alreadyImported
-                              ? "Adicionado"
-                              : isPending
-                                ? "Copiando..."
-                                : "Adicionar"}
-                          </Button>
-                        </div>
-                      );
-                    })}
+                            {t.discipline_name}
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary" className="text-[10px]">
+                            Sem disciplina
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={isPending || alreadyImported}
+                      onClick={() => handleImport(t)}
+                    >
+                      {isPending ? (
+                        <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Copy className="mr-1.5 h-3.5 w-3.5" />
+                      )}
+                      {alreadyImported
+                        ? "Adicionado"
+                        : isPending
+                          ? "Copiando..."
+                          : "Adicionar"}
+                    </Button>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>

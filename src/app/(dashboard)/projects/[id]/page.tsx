@@ -41,7 +41,7 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
   const [
     { data: disciplines },
     { data: templates },
-    { data: otherTemplates },
+    { data: libraryTemplates },
     { data: links },
     { data: allDesigners },
     { data: projectDesigners },
@@ -54,8 +54,8 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
       .order("created_at", { ascending: false }),
     supabase
       .from("cl_form_templates")
-      .select("id, name, project_id, cl_projects(name), cl_disciplines(name, color)")
-      .neq("project_id", params.id)
+      .select("id, name, project_id, cl_disciplines(name, color)")
+      .eq("is_template", true)
       .order("created_at", { ascending: false }),
     supabase
       .from("cl_public_links")
@@ -87,23 +87,19 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
   const publicBaseUrl = getPublicBucketBaseUrl(BUCKETS.CHECKLIST_IMAGES);
 
   const importableTemplates: ImportableTemplate[] = (
-    (otherTemplates ?? []) as unknown as {
+    (libraryTemplates ?? []) as unknown as {
       id: string;
       name: string;
-      project_id: string;
-      cl_projects: { name: string } | null;
+      project_id: string | null;
       cl_disciplines: { name: string; color: string } | null;
     }[]
-  )
-    .filter((t) => t.cl_projects)
-    .map((t) => ({
-      id: t.id,
-      name: t.name,
-      project_id: t.project_id,
-      project_name: t.cl_projects?.name ?? "Projeto",
-      discipline_name: t.cl_disciplines?.name ?? null,
-      discipline_color: t.cl_disciplines?.color ?? null,
-    }));
+  ).map((t) => ({
+    id: t.id,
+    name: t.name,
+    project_id: t.project_id,
+    discipline_name: t.cl_disciplines?.name ?? null,
+    discipline_color: t.cl_disciplines?.color ?? null,
+  }));
 
   return (
     <div className="space-y-8">

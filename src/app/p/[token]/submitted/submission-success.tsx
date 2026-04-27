@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ArrowLeft, CheckCircle2, ListChecks } from "lucide-react";
+import { ArrowLeft, CheckCircle2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -47,12 +47,6 @@ export function SubmissionSuccess({ token, projectName, officeSettings }: Props)
                 <Link href={`/p/${token}`}>
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Voltar à capa
-                </Link>
-              </Button>
-              <Button asChild>
-                <Link href={`/p/${token}/forms`}>
-                  <ListChecks className="mr-2 h-4 w-4" />
-                  Ver formulários
                 </Link>
               </Button>
             </div>
