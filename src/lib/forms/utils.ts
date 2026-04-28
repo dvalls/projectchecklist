@@ -35,6 +35,23 @@ export function serializeCheckboxGroup(v: CheckboxGroupValue): string | null {
   });
 }
 
+export function parseRadioOther(value: string | null): { other: string } | null {
+  if (!value) return null;
+  try {
+    const parsed = JSON.parse(value);
+    if (parsed && typeof parsed.other === "string") {
+      return { other: parsed.other };
+    }
+  } catch {
+    // not JSON, plain value
+  }
+  return null;
+}
+
+export function serializeRadioOther(text: string): string {
+  return JSON.stringify({ other: text });
+}
+
 export function evaluateVisible(
   condition: VisibleWhen | null,
   values: Record<string, FieldValue>,
@@ -85,6 +102,11 @@ export function isFieldAnswered(field: ClFormField, v: FieldValue | undefined): 
   if (field.type === "checkbox_group") {
     const parsed = parseCheckboxGroup(v?.value ?? null);
     return parsed.selected.length > 0 || Boolean(parsed.other);
+  }
+  if (field.type === "radio") {
+    const radioOther = parseRadioOther(v?.value ?? null);
+    if (radioOther !== null) return Boolean(radioOther.other);
+    return Boolean(v?.value);
   }
   return Boolean(v?.value && v.value.trim() !== "");
 }

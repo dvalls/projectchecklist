@@ -26,6 +26,14 @@ export function formatFieldValue(field: ClFormField, raw: string | null): string
   }
 
   if (field.type === "select" || field.type === "radio") {
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed.other === "string") {
+        return parsed.other ? `Outra: ${parsed.other}` : "Outra";
+      }
+    } catch {
+      // not JSON, plain value
+    }
     const choice = choices.find((c) => c.value === raw);
     return choice?.label ?? raw;
   }

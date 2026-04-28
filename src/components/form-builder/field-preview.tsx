@@ -235,21 +235,37 @@ export function FieldPreview({
             choices.map((c) => (
               <label
                 key={c.value}
-                className="flex items-center gap-2 text-sm text-muted-foreground"
+                className="flex items-start gap-2 text-sm text-muted-foreground"
               >
-                <input type="radio" disabled />
-                <ChoiceLabel label={c.label} recommended={c.recommended} />
-                {c.image_url ? (
-                  <PhotoHintButton
-                    imagePath={c.image_url}
-                    caption={c.image_caption ?? null}
-                    alt={c.label}
-                    size="xs"
-                  />
-                ) : null}
+                <input type="radio" disabled className="mt-0.5 shrink-0" />
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1">
+                    <ChoiceLabel label={c.label} recommended={c.recommended} />
+                    {c.image_url ? (
+                      <PhotoHintButton
+                        imagePath={c.image_url}
+                        caption={c.image_caption ?? null}
+                        alt={c.label}
+                        size="xs"
+                      />
+                    ) : null}
+                  </div>
+                  {c.description ? (
+                    <p className="mt-0.5 text-xs italic text-muted-foreground">
+                      {c.description}
+                    </p>
+                  ) : null}
+                </div>
               </label>
             ))
           )}
+          {opts.allow_other ? (
+            <label className="flex items-center gap-2 text-sm text-muted-foreground">
+              <input type="radio" disabled />
+              Outra:
+              <Input className="h-7 flex-1" placeholder="" disabled />
+            </label>
+          ) : null}
         </div>
       ) : null}
     </div>

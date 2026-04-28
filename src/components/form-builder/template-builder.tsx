@@ -87,13 +87,16 @@ import {
   renameTemplate,
   saveAsTemplate,
   saveTemplate,
-  type FieldInput,
+  type FieldInput as FieldInputPayload,
   type SectionInput,
   type TemplateSavePayload,
 } from "@/app/(dashboard)/templates/[id]/actions";
 
+import type { FieldValue } from "@/lib/forms/types";
+import { evaluateVisible, isDisplayOnly, makeFieldKey } from "@/lib/forms/utils";
+
+import { FieldInputControl } from "./field-input";
 import { FieldAccordionItem } from "./field-accordion-item";
-import { FieldPreview } from "./field-preview";
 import { ColumnsPicker, FIELD_TYPE_ORDER, TYPE_META } from "./shared";
 
 export interface EditorSection {
@@ -345,7 +348,7 @@ export function TemplateBuilder({
       }));
 
       let globalPos = 0;
-      const fieldsPayload: FieldInput[] = sections.flatMap((s) =>
+      const fieldsPayload: FieldInputPayload[] = sections.flatMap((s) =>
         fields
           .filter((f) => f.section_local_id === s.local_id)
           .map((f) => {
@@ -910,6 +913,39 @@ function AddFieldBar({ onAdd }: { onAdd: (type: FieldType) => void }) {
   );
 }
 
+function buildPreviewField(f: EditorField, templateId: string): ClFormField {
+  return {
+    id: f.localId,
+    template_id: templateId,
+    section_id: null,
+    group_key: f.group_key,
+    label: f.label,
+    help_text: f.help_text,
+    type: f.type,
+    required: f.required,
+    column_span: f.column_span,
+    position: 0,
+    options: f.options,
+    visible_when: f.visible_when,
+    created_at: new Date().toISOString(),
+  };
+}
+
+function buildInitialValues(
+  previewSections: { section: EditorSection; fields: EditorField[] }[],
+): Record<string, FieldValue> {
+  const out: Record<string, FieldValue> = {};
+  for (const { fields: sf } of previewSections) {
+    for (const f of sf) {
+      if (isDisplayOnly(f.type)) continue;
+      out[makeFieldKey(f.localId)] = {
+        value: f.type === "checkbox" ? "false" : null,
+      };
+    }
+  }
+  return out;
+}
+
 function PreviewBody({
   templateId,
   previewSections,
@@ -923,6 +959,18 @@ function PreviewBody({
   environments: string[];
   compact?: boolean;
 }) {
+  const [values, setValues] = useState<Record<string, FieldValue>>(() =>
+    buildInitialValues(previewSections),
+  );
+
+  function setFieldValue(key: string, patch: Partial<FieldValue>) {
+    setValues((prev) => ({ ...prev, [key]: { ...prev[key], ...patch } }));
+  }
+
+  function resetValues() {
+    setValues(buildInitialValues(previewSections));
+  }
+
   if (
     previewSections.length === 0 ||
     previewSections.every((s) => s.fields.length === 0)
@@ -933,13 +981,26 @@ function PreviewBody({
       </p>
     );
   }
+
+  const isMatrix = layoutMode === "matrix";
+
   return (
     <div className={cn("space-y-6", compact && "space-y-4 text-sm")}>
-      {layoutMode === "matrix" && environments.length > 0 ? (
-        <p className="rounded bg-muted/40 px-2 py-1 text-xs text-muted-foreground">
-          Matriz: {environments.join(" • ")}
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[11px] text-muted-foreground">
+          {isMatrix
+            ? `Matriz: ${environments.join(" • ")}`
+            : "Preencha os campos para testar exibições condicionais"}
         </p>
-      ) : null}
+        <button
+          type="button"
+          onClick={resetValues}
+          className="shrink-0 text-[11px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+        >
+          Limpar
+        </button>
+      </div>
+
       {previewSections.map(({ section, fields: sf }) => (
         <div key={section.local_id} className="space-y-3">
           <div className="border-b pb-1">
@@ -959,21 +1020,10 @@ function PreviewBody({
             }}
           >
             {sf.map((f) => {
-              const previewField: ClFormField = {
-                id: f.localId,
-                template_id: templateId,
-                section_id: null,
-                group_key: f.group_key,
-                label: f.label,
-                help_text: f.help_text,
-                type: f.type,
-                required: f.required,
-                column_span: f.column_span,
-                position: 0,
-                options: f.options,
-                visible_when: f.visible_when,
-                created_at: new Date().toISOString(),
-              };
+              const key = makeFieldKey(f.localId);
+              const visible = evaluateVisible(f.visible_when, values);
+              if (!visible) return null;
+              const previewField = buildPreviewField(f, templateId);
               return (
                 <div
                   key={f.localId}
@@ -981,7 +1031,11 @@ function PreviewBody({
                     gridColumn: `span ${Math.min(f.column_span, section.columns)}`,
                   }}
                 >
-                  <FieldPreview field={previewField} hidden={Boolean(f.visible_when)} />
+                  <FieldInputControl
+                    field={previewField}
+                    value={values[key]}
+                    onChange={(patch) => setFieldValue(key, patch)}
+                  />
                 </div>
               );
             })}

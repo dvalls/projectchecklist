@@ -42,7 +42,9 @@ import {
   isFieldAnswered,
   makeFieldKey,
   parseCheckboxGroup,
+  parseRadioOther,
   serializeCheckboxGroup,
+  serializeRadioOther,
 } from "@/lib/forms/utils";
 
 import type {
@@ -1062,36 +1064,78 @@ function FieldInput({
         </div>
       ) : null}
 
-      {field.type === "radio" ? (
-        <div className="space-y-1.5 pt-1">
-          {choices.map((c) => (
-            <label
-              key={c.value}
-              className={
-                "flex min-w-0 items-center gap-2 text-sm " +
-                (locked ? "cursor-not-allowed" : "cursor-pointer")
-              }
-            >
-              <input
-                type="radio"
-                name={field.id}
-                checked={value?.value === c.value}
-                disabled={locked}
-                onChange={() => onChange({ value: c.value })}
-              />
-              <span className="min-w-0 break-words">{c.label}</span>
-              {c.image_url ? (
-                <PhotoHintButton
-                  imagePath={c.image_url}
-                  caption={c.image_caption ?? null}
-                  alt={c.label}
-                  size="xs"
+      {field.type === "radio" ? (() => {
+        const radioOther = parseRadioOther(value?.value ?? null);
+        const isOtherSelected = radioOther !== null;
+        return (
+          <div className="space-y-1.5 pt-1">
+            {choices.map((c) => (
+              <label
+                key={c.value}
+                className={
+                  "flex min-w-0 items-start gap-2 text-sm " +
+                  (locked ? "cursor-not-allowed" : "cursor-pointer")
+                }
+              >
+                <input
+                  type="radio"
+                  name={field.id}
+                  checked={value?.value === c.value}
+                  disabled={locked}
+                  onChange={() => onChange({ value: c.value })}
+                  className="mt-0.5 shrink-0"
                 />
-              ) : null}
-            </label>
-          ))}
-        </div>
-      ) : null}
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1">
+                    <span className="min-w-0 break-words">{c.label}</span>
+                    {c.image_url ? (
+                      <PhotoHintButton
+                        imagePath={c.image_url}
+                        caption={c.image_caption ?? null}
+                        alt={c.label}
+                        size="xs"
+                      />
+                    ) : null}
+                  </div>
+                  {c.description ? (
+                    <p className="mt-0.5 text-xs italic text-muted-foreground">
+                      {c.description}
+                    </p>
+                  ) : null}
+                </div>
+              </label>
+            ))}
+            {opts.allow_other ? (
+              <div className="flex flex-col gap-2 text-sm sm:flex-row sm:items-center">
+                <label
+                  className={
+                    "flex shrink-0 items-center gap-2 " +
+                    (locked ? "cursor-not-allowed" : "cursor-pointer")
+                  }
+                >
+                  <input
+                    type="radio"
+                    name={field.id}
+                    checked={isOtherSelected}
+                    disabled={locked}
+                    onChange={() =>
+                      onChange({ value: serializeRadioOther(radioOther?.other ?? "") })
+                    }
+                  />
+                  <span>Outra:</span>
+                </label>
+                <Input
+                  className="h-8 flex-1"
+                  value={radioOther?.other ?? ""}
+                  disabled={locked || !isOtherSelected}
+                  readOnly={locked}
+                  onChange={(e) => onChange({ value: serializeRadioOther(e.target.value) })}
+                />
+              </div>
+            ) : null}
+          </div>
+        );
+      })() : null}
     </div>
   );
 }

@@ -306,7 +306,7 @@ export function FieldAccordionItem({
                       ? {
                           choices: prevOpts.choices ?? [],
                           allow_other:
-                            nextType === "checkbox_group"
+                            nextType === "checkbox_group" || nextType === "radio"
                               ? (prevOpts.allow_other ?? false)
                               : undefined,
                           ...(photoHint ?? {}),
@@ -389,8 +389,12 @@ export function FieldAccordionItem({
               fieldLocalId={field.localId}
               choices={choices}
               allowOther={allowOther}
-              showAllowOther={field.type === "checkbox_group"}
-              showDescription={field.type === "checkbox_group"}
+              showAllowOther={
+                field.type === "checkbox_group" || field.type === "radio"
+              }
+              showDescription={
+                field.type === "checkbox_group" || field.type === "radio"
+              }
               onAdd={() =>
                 onChange((f) => {
                   const current =
@@ -711,24 +715,64 @@ export function FieldAccordionItem({
                             ))}
                           </SelectContent>
                         </Select>
-                        {field.visible_when.op !== "truthy" ? (
-                          <Input
-                            className="sm:col-span-2"
-                            value={field.visible_when.value ?? ""}
-                            onChange={(e) =>
-                              onChange((f) => ({
-                                ...f,
-                                visible_when: f.visible_when
-                                  ? {
-                                      ...f.visible_when,
-                                      value: e.target.value,
-                                    }
-                                  : null,
-                              }))
-                            }
-                            placeholder="Valor"
-                          />
-                        ) : null}
+                        {field.visible_when.op !== "truthy" ? (() => {
+                          const triggerField = triggerCandidates.find(
+                            (f) => f.localId === field.visible_when?.field_id,
+                          );
+                          const triggerChoices =
+                            triggerField &&
+                            (triggerField.type === "radio" ||
+                              triggerField.type === "select" ||
+                              triggerField.type === "checkbox_group")
+                              ? ((triggerField.options as Exclude<FieldOptions, null>)?.choices ?? [])
+                              : null;
+
+                          if (triggerChoices && triggerChoices.length > 0) {
+                            return (
+                              <Select
+                                value={field.visible_when.value ?? ""}
+                                onValueChange={(v) =>
+                                  onChange((f) => ({
+                                    ...f,
+                                    visible_when: f.visible_when
+                                      ? { ...f.visible_when, value: v }
+                                      : null,
+                                  }))
+                                }
+                              >
+                                <SelectTrigger className="h-9 sm:col-span-2">
+                                  <SelectValue placeholder="Selecione o valor…" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {triggerChoices.map((c) => (
+                                    <SelectItem key={c.value} value={c.value}>
+                                      {c.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            );
+                          }
+
+                          return (
+                            <Input
+                              className="sm:col-span-2"
+                              value={field.visible_when.value ?? ""}
+                              onChange={(e) =>
+                                onChange((f) => ({
+                                  ...f,
+                                  visible_when: f.visible_when
+                                    ? {
+                                        ...f.visible_when,
+                                        value: e.target.value,
+                                      }
+                                    : null,
+                                }))
+                              }
+                              placeholder="Valor"
+                            />
+                          );
+                        })() : null}
                       </div>
                     ) : null}
                   </div>
