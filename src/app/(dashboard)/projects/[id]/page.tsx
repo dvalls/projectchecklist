@@ -135,7 +135,7 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
               trigger={
                 <Button size="sm" variant="outline">
                   <Copy className="mr-1.5 h-3.5 w-3.5" />
-                  Adicionar existente
+                  Adicionar template
                 </Button>
               }
             />

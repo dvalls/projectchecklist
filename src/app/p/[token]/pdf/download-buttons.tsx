@@ -10,6 +10,7 @@ import { getPublicBucketBaseUrl } from "@/lib/storage";
 
 import {
   getPublicFullReport,
+  getPublicSessionSummary,
   getPublicSubmissionSummary,
   type PublicFullReport,
   type PublicSubmissionSummary,
@@ -52,6 +53,13 @@ function summaryToFullReport(
   summary: PublicSubmissionSummary,
   projectName = "Checklist",
 ): PublicFullReport {
+  return summariesToFullReport([summary], projectName);
+}
+
+function summariesToFullReport(
+  summaries: PublicSubmissionSummary[],
+  projectName = "Checklist",
+): PublicFullReport {
   return {
     project: {
       id: "",
@@ -64,20 +72,18 @@ function summaryToFullReport(
     disciplines: [],
     publicBaseUrl: getPublicBaseUrl(),
     generatedAt: new Date().toISOString(),
-    templates: [
-      {
-        template: summary.template,
-        sections: summary.sections,
-        fields: summary.fields,
-        submissions: [
-          {
-            submission: summary.submission,
-            values: summary.values,
-            matrixValues: summary.matrixValues,
-          },
-        ],
-      },
-    ],
+    templates: summaries.map((s) => ({
+      template: s.template,
+      sections: s.sections,
+      fields: s.fields,
+      submissions: [
+        {
+          submission: s.submission,
+          values: s.values,
+          matrixValues: s.matrixValues,
+        },
+      ],
+    })),
   };
 }
 
@@ -123,6 +129,68 @@ export function DownloadSubmissionPdfButton({
         slugify(templateName),
         slugify(clientName ?? "sem-nome"),
       ].filter(Boolean);
+      await downloadBlob(blob, `${parts.join("-")}.pdf`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao gerar PDF.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <Button
+      type="button"
+      variant={variant}
+      size={size}
+      onClick={handleClick}
+      disabled={loading}
+    >
+      {loading ? (
+        <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+      ) : (
+        <Download className="mr-1.5 h-3.5 w-3.5" />
+      )}
+      Baixar PDF
+    </Button>
+  );
+}
+
+interface SessionButtonProps {
+  token: string;
+  submissionIds: string[];
+  clientName: string | null;
+  projectName?: string;
+  variant?: "outline" | "default" | "ghost";
+  size?: "sm" | "default";
+}
+
+export function DownloadSessionPdfButton({
+  token,
+  submissionIds,
+  clientName,
+  projectName,
+  variant = "outline",
+  size = "sm",
+}: SessionButtonProps) {
+  const [loading, setLoading] = useState(false);
+
+  async function handleClick() {
+    if (loading) return;
+    setLoading(true);
+    try {
+      const res = await getPublicSessionSummary(token, submissionIds);
+      if ("error" in res && res.error) {
+        toast.error(res.error);
+        return;
+      }
+      if (!("data" in res) || !res.data) {
+        toast.error("Não foi possível carregar o resumo.");
+        return;
+      }
+
+      const payload = summariesToFullReport(res.data, projectName);
+      const blob = await renderPdfBlob(payload);
+      const parts = ["resumo", slugify(clientName ?? "sem-nome")].filter(Boolean);
       await downloadBlob(blob, `${parts.join("-")}.pdf`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao gerar PDF.");

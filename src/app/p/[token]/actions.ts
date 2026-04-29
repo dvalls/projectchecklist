@@ -165,6 +165,138 @@ export interface PublicSubmissionSummary {
   matrixValues: ClSubmissionValueMatrix[];
 }
 
+export async function getPublicSessionSummary(
+  token: string,
+  submissionIds: string[],
+): Promise<{ data: PublicSubmissionSummary[]; error?: never } | { data?: never; error: string }> {
+  if (submissionIds.length === 0) return { data: [] };
+
+  const supabase = createServiceRoleClient();
+
+  const { data: link } = await supabase
+    .from("cl_public_links")
+    .select("id, is_active")
+    .eq("token", token)
+    .maybeSingle();
+
+  const typedLink = link as { id: string; is_active: boolean } | null;
+  if (!typedLink) return { error: "Link inválido." };
+  if (!typedLink.is_active) return { error: "Link desativado." };
+
+  const { data: submissions } = await supabase
+    .from("cl_form_submissions")
+    .select(
+      "id, template_id, public_link_id, client_name, client_email, submitted_at, created_at, status",
+    )
+    .in("id", submissionIds);
+
+  if (!submissions) return { error: "Submissões não encontradas." };
+
+  const typedSubs = submissions as Pick<
+    ClFormSubmission,
+    | "id"
+    | "template_id"
+    | "public_link_id"
+    | "client_name"
+    | "client_email"
+    | "submitted_at"
+    | "created_at"
+    | "status"
+  >[];
+
+  if (typedSubs.some((s) => s.public_link_id !== typedLink.id)) {
+    return { error: "Submissão não pertence a este link." };
+  }
+
+  const templateIds = [...new Set(typedSubs.map((s) => s.template_id))];
+
+  const [templatesRes, sectionsRes, fieldsRes, valuesRes, matrixRes] = await Promise.all([
+    supabase
+      .from("cl_form_templates")
+      .select("id, name, description, layout_mode, environments")
+      .in("id", templateIds),
+    supabase
+      .from("cl_form_sections")
+      .select("*")
+      .in("template_id", templateIds)
+      .order("position"),
+    supabase
+      .from("cl_form_fields")
+      .select("*")
+      .in("template_id", templateIds)
+      .order("position"),
+    supabase.from("cl_submission_values").select("*").in("submission_id", submissionIds),
+    supabase
+      .from("cl_submission_values_matrix")
+      .select("*")
+      .in("submission_id", submissionIds),
+  ]);
+
+  const templateById = new Map(
+    (
+      (templatesRes.data ?? []) as Pick<
+        ClFormTemplate,
+        "id" | "name" | "description" | "layout_mode" | "environments"
+      >[]
+    ).map((t) => [t.id, t]),
+  );
+
+  const sectionsByTemplate = new Map<string, ClFormSection[]>();
+  for (const s of (sectionsRes.data ?? []) as ClFormSection[]) {
+    const arr = sectionsByTemplate.get(s.template_id) ?? [];
+    arr.push(s);
+    sectionsByTemplate.set(s.template_id, arr);
+  }
+
+  const fieldsByTemplate = new Map<string, ClFormField[]>();
+  for (const f of (fieldsRes.data ?? []) as ClFormField[]) {
+    const arr = fieldsByTemplate.get(f.template_id) ?? [];
+    arr.push(f);
+    fieldsByTemplate.set(f.template_id, arr);
+  }
+
+  const valuesBySubmission = new Map<string, ClSubmissionValue[]>();
+  for (const v of (valuesRes.data ?? []) as ClSubmissionValue[]) {
+    const arr = valuesBySubmission.get(v.submission_id) ?? [];
+    arr.push(v);
+    valuesBySubmission.set(v.submission_id, arr);
+  }
+
+  const matrixBySubmission = new Map<string, ClSubmissionValueMatrix[]>();
+  for (const v of (matrixRes.data ?? []) as ClSubmissionValueMatrix[]) {
+    const arr = matrixBySubmission.get(v.submission_id) ?? [];
+    arr.push(v);
+    matrixBySubmission.set(v.submission_id, arr);
+  }
+
+  const data: PublicSubmissionSummary[] = typedSubs
+    .map((sub) => {
+      const template = templateById.get(sub.template_id);
+      if (!template) return null;
+      return {
+        submission: {
+          id: sub.id,
+          client_name: sub.client_name,
+          client_email: sub.client_email,
+          submitted_at: sub.submitted_at,
+          created_at: sub.created_at,
+          status: sub.status,
+        },
+        template: template as Pick<
+          ClFormTemplate,
+          "id" | "name" | "description" | "layout_mode" | "environments"
+        >,
+        sections: sectionsByTemplate.get(sub.template_id) ?? [],
+        fields: fieldsByTemplate.get(sub.template_id) ?? [],
+        values: valuesBySubmission.get(sub.id) ?? [],
+        matrixValues: matrixBySubmission.get(sub.id) ?? [],
+      };
+    })
+    .filter((s): s is PublicSubmissionSummary => s !== null);
+
+  return { data };
+}
+
 export async function getPublicSubmissionSummary(
   token: string,
   submissionId: string,
@@ -504,7 +636,7 @@ export async function getPublicFullReport(
         submissions: subs,
       };
     })
-    .filter((entry) => entry.submissions.length > 0);
+;
 
   const publicBaseUrl = getPublicBucketBaseUrl(BUCKET);
 

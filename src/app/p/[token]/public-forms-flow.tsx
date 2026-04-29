@@ -63,7 +63,7 @@ interface Props {
   allowResubmit?: boolean;
 }
 
-type FieldFilter = "all" | "unfilled" | "filled";
+type FieldFilter = "all" | "unfilled" | "new" | "filled";
 
 export function PublicFormsFlow({
   token,
@@ -223,6 +223,7 @@ function PublicSubmissionForm({
   const allProgress = useMemo(() => {
     let totalAll = 0;
     let doneAll = 0;
+    let newCount = 0;
     for (const env of envScope) {
       for (const f of fields) {
         if (isDisplayOnly(f.type)) continue;
@@ -235,15 +236,19 @@ function PublicSubmissionForm({
         if (locked || isFieldAnswered(f, values[key])) {
           doneAll += 1;
         }
+        if (!locked && isFieldAnswered(f, values[key])) {
+          newCount += 1;
+        }
       }
     }
-    return { doneAll, totalAll };
+    return { doneAll, totalAll, newCount };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fields, values, envScope, previousByField, previousByMatrix, allowResubmit]);
 
   const filterCounts = useMemo(
     () => ({
       all: allProgress.totalAll,
+      new: allProgress.newCount,
       filled: allProgress.doneAll,
       unfilled: allProgress.totalAll - allProgress.doneAll,
     }),
@@ -397,7 +402,9 @@ function PublicSubmissionForm({
               <p className="rounded-md border border-dashed bg-muted/20 p-4 text-center text-sm text-muted-foreground">
                 {filter === "filled"
                   ? "Nenhum item preenchido até o momento."
-                  : "Todos os itens estão preenchidos."}
+                  : filter === "new"
+                    ? "Nenhum item sendo preenchido no momento."
+                    : "Todos os itens estão preenchidos."}
               </p>
             ) : null}
           </>
@@ -462,8 +469,10 @@ function StandardRenderer({
           if (isDisplayOnly(field.type)) return false;
           const key = makeFieldKey(field.id);
           const locked = Boolean(previousByField[field.id]) && !allowResubmit;
-          const answered = locked || isFieldAnswered(field, values[key]);
-          return filter === "filled" ? answered : !answered;
+          const answered = isFieldAnswered(field, values[key]);
+          if (filter === "new") return !locked && answered;
+          if (filter === "filled") return locked || answered;
+          return !locked && !answered;
         });
         if (filteredFields.length === 0) return null;
         return (
@@ -556,6 +565,7 @@ function MatrixRenderer({
   function rowMatchesFilter(field: ClFormField): boolean {
     if (filter === "all") return true;
     let anyVisible = false;
+    let anyNewlyFilled = false;
     let anyFilled = false;
     let anyUnfilled = false;
     for (const env of environments) {
@@ -564,11 +574,15 @@ function MatrixRenderer({
       anyVisible = true;
       const key = makeFieldKey(field.id, env);
       const locked = Boolean(previousByMatrix[field.id]?.[env]) && !allowResubmit;
-      if (locked || isFieldAnswered(field, values[key])) anyFilled = true;
+      const answered = isFieldAnswered(field, values[key]);
+      if (locked || answered) anyFilled = true;
       else anyUnfilled = true;
+      if (!locked && answered) anyNewlyFilled = true;
     }
     if (!anyVisible) return false;
-    return filter === "filled" ? !anyUnfilled : anyUnfilled;
+    if (filter === "new") return anyNewlyFilled;
+    if (filter === "filled") return !anyUnfilled;
+    return anyUnfilled;
   }
 
   return (
@@ -686,7 +700,7 @@ function FilterBar({
   onSearchChange,
 }: {
   filter: FieldFilter;
-  counts: { all: number; filled: number; unfilled: number };
+  counts: { all: number; new: number; filled: number; unfilled: number };
   onChange: (next: FieldFilter) => void;
   search: string;
   onSearchChange: (value: string) => void;
@@ -695,6 +709,7 @@ function FilterBar({
   const options: Array<{ key: FieldFilter; label: string }> = [
     { key: "all", label: "Todos" },
     { key: "unfilled", label: "Não preenchidos" },
+    { key: "new", label: "Em preenchimento" },
     { key: "filled", label: "Preenchidos" },
   ];
 
@@ -765,7 +780,7 @@ function InfoFieldView({ field }: { field: ClFormField }) {
   return (
     <div className="rounded-md border border-dashed bg-muted/20 p-3">
       {field.label ? (
-        <div className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        <div className="mb-1 text-xs font-semibold uppercase tracking-wide">
           {field.label}
         </div>
       ) : null}
@@ -854,15 +869,17 @@ function FieldInput({
   return (
     <div className={containerClassName}>
       {showLabel ? (
-        <div className="flex flex-wrap items-center gap-2">
-          <Label>
-            {field.label}
-            {field.required ? (
-              <span className="ml-1 text-destructive-foreground">*</span>
-            ) : null}
-          </Label>
-          {fieldPhotoButton}
-          {previousBadge}
+        <div className="rounded-md border border-dashed bg-muted/20 p-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Label>
+              {field.label}
+              {field.required ? (
+                <span className="ml-1 text-destructive-foreground">*</span>
+              ) : null}
+            </Label>
+            {fieldPhotoButton}
+            {previousBadge}
+          </div>
         </div>
       ) : previousBadge && field.type !== "checkbox" ? (
         <div className="flex">{previousBadge}</div>

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 import type { ClFormField, ClFormSection, ClFormTemplate } from "@/lib/supabase/types";
 
 import { readIdentity, type PublicIdentity } from "../../identity-storage";
@@ -57,7 +58,7 @@ export function PublicFillWrapper({
 
   if (!hydrated || !identity) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-muted/30">
+      <div className="flex min-h-screen items-center justify-center bg-secondary dark:bg-background">
         <p className="text-sm text-muted-foreground">Carregando...</p>
       </div>
     );
@@ -66,7 +67,7 @@ export function PublicFillWrapper({
   const backHref = `/p/${token}/forms`;
 
   return (
-    <div className="flex min-h-screen flex-col bg-muted/30">
+    <div className="flex min-h-screen flex-col bg-secondary dark:bg-background">
       <div className="border-b bg-background">
         <div className="mx-auto flex w-full max-w-5xl flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
           <Link
@@ -76,11 +77,14 @@ export function PublicFillWrapper({
             <ArrowLeft className="h-4 w-4" />
             Voltar à lista
           </Link>
-          <div className="min-w-0 text-left text-xs text-muted-foreground sm:text-right">
-            <div className="truncate font-medium text-foreground">
-              {identity.client_name}
+          <div className="flex items-center gap-1">
+            <div className="min-w-0 text-left text-xs text-muted-foreground sm:text-right">
+              <div className="truncate font-medium text-foreground">
+                {identity.client_name}
+              </div>
+              <div className="truncate">{identity.client_email}</div>
             </div>
-            <div className="truncate">{identity.client_email}</div>
+            <ThemeToggle />
           </div>
         </div>
       </div>

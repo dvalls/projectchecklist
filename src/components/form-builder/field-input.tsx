@@ -35,7 +35,7 @@ function InfoFieldView({ field }: { field: ClFormField }) {
   return (
     <div className="rounded-md border border-dashed bg-muted/20 p-3">
       {field.label ? (
-        <div className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        <div className="mb-1 text-xs font-semibold uppercase tracking-wide">
           {field.label}
         </div>
       ) : null}
@@ -106,14 +106,16 @@ export function FieldInputControl({
   return (
     <div className="space-y-1.5">
       {showLabel ? (
-        <div className="flex flex-wrap items-center gap-2">
-          <Label>
-            {field.label}
-            {field.required ? (
-              <span className="ml-1 text-destructive-foreground">*</span>
-            ) : null}
-          </Label>
-          {fieldPhotoButton}
+        <div className="rounded-md border border-dashed bg-muted/20 p-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Label>
+              {field.label}
+              {field.required ? (
+                <span className="ml-1 text-destructive-foreground">*</span>
+              ) : null}
+            </Label>
+            {fieldPhotoButton}
+          </div>
         </div>
       ) : null}
       {showLabel && field.help_text ? (

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ArrowLeft, CheckCircle2 } from "lucide-react";
 
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -28,7 +29,10 @@ export function SubmissionSuccess({ token, projectName, officeSettings }: Props)
   }, [token]);
 
   return (
-    <div className="flex min-h-screen flex-col bg-muted/30">
+    <div className="flex min-h-screen flex-col bg-secondary dark:bg-background">
+      <div className="flex justify-end px-4 py-2">
+        <ThemeToggle />
+      </div>
       <div className="mx-auto flex w-full max-w-3xl flex-1 items-center justify-center px-4 py-10">
         <Card className="w-full">
           <CardContent className="flex flex-col items-center justify-center gap-4 px-6 py-12 text-center">

@@ -15,6 +15,7 @@ import {
 import { toast } from "sonner";
 
 import { BackLink } from "@/components/layout/back-link";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { getDisciplineIcon } from "@/lib/disciplines/icon";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -280,22 +281,23 @@ export function PublicFormsList({
 
   if (!hydrated || !identity) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-muted/30">
+      <div className="flex min-h-screen items-center justify-center bg-secondary dark:bg-background">
         <p className="text-sm text-muted-foreground">Carregando...</p>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-muted/30">
+    <div className="flex min-h-screen flex-col bg-secondary dark:bg-background">
       <div className="border-b bg-background">
         <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-3 px-4 py-4">
           <BackLink href={`/p/${token}`}>Voltar à capa</BackLink>
-          <div className="flex min-w-0 items-center gap-3">
+          <div className="flex min-w-0 items-center gap-1">
             <div className="hidden text-right text-xs text-muted-foreground sm:block">
               <div className="font-medium text-foreground">{identity.client_name}</div>
               <div className="truncate">{identity.client_email}</div>
             </div>
+            <ThemeToggle />
             <Button variant="ghost" size="sm" onClick={handleLogout}>
               <LogOut className="mr-1 h-3.5 w-3.5" />
               Sair

@@ -7,46 +7,44 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { ClFormSection } from "@/lib/supabase/types";
 
-import { getPublicSubmissionSummary, type PublicSubmissionSummary } from "./actions";
-import { DownloadSubmissionPdfButton } from "./pdf/download-buttons";
+import { getPublicSessionSummary, type PublicSubmissionSummary } from "./actions";
+import { DownloadSessionPdfButton } from "./pdf/download-buttons";
 import { formatDateTime, formatFieldValue } from "./pdf/format-value";
 
 interface Props {
   token: string;
-  submissionId: string;
+  submissionIds: string[];
   clientName: string | null;
-  templateName: string;
   projectName?: string;
 }
 
 export function PublicSubmissionSummaryDialog({
   token,
-  submissionId,
+  submissionIds,
   clientName,
-  templateName,
   projectName,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [summary, setSummary] = useState<PublicSubmissionSummary | null>(null);
+  const [summaries, setSummaries] = useState<PublicSubmissionSummary[] | null>(null);
   const fetchingRef = useRef(false);
 
   useEffect(() => {
-    if (!open || summary || fetchingRef.current) return;
+    if (!open || summaries || fetchingRef.current) return;
 
     fetchingRef.current = true;
     setLoading(true);
     setError(null);
 
-    getPublicSubmissionSummary(token, submissionId)
+    getPublicSessionSummary(token, submissionIds)
       .then((res) => {
         if ("error" in res && res.error) {
           setError(res.error);
           return;
         }
         if ("data" in res && res.data) {
-          setSummary(res.data);
+          setSummaries(res.data);
         }
       })
       .catch((err) => {
@@ -56,7 +54,7 @@ export function PublicSubmissionSummaryDialog({
         fetchingRef.current = false;
         setLoading(false);
       });
-  }, [open, summary, token, submissionId]);
+  }, [open, summaries, token, submissionIds]);
 
   return (
     <>
@@ -74,12 +72,11 @@ export function PublicSubmissionSummaryDialog({
         <DialogContent className="max-h-[85vh] max-w-2xl overflow-hidden">
           <DialogHeader className="flex flex-row items-center justify-between gap-3 pr-8">
             <DialogTitle>Resumo das respostas</DialogTitle>
-            {summary ? (
-              <DownloadSubmissionPdfButton
+            {summaries && summaries.length > 0 ? (
+              <DownloadSessionPdfButton
                 token={token}
-                submissionId={submissionId}
+                submissionIds={submissionIds}
                 clientName={clientName}
-                templateName={templateName}
                 projectName={projectName}
               />
             ) : null}
@@ -93,12 +90,16 @@ export function PublicSubmissionSummaryDialog({
               </div>
             ) : error ? (
               <p className="py-8 text-center text-sm text-destructive">{error}</p>
-            ) : summary ? (
-              <SummaryContent
-                summary={summary}
-                fallbackName={clientName}
-                fallbackTemplate={templateName}
-              />
+            ) : summaries ? (
+              <div className="space-y-8">
+                {summaries.map((summary) => (
+                  <SummaryContent
+                    key={summary.submission.id}
+                    summary={summary}
+                    fallbackName={clientName}
+                  />
+                ))}
+              </div>
             ) : null}
           </div>
         </DialogContent>
@@ -110,11 +111,9 @@ export function PublicSubmissionSummaryDialog({
 function SummaryContent({
   summary,
   fallbackName,
-  fallbackTemplate,
 }: {
   summary: PublicSubmissionSummary;
   fallbackName: string | null;
-  fallbackTemplate: string;
 }) {
   const { submission, template, sections, fields, values, matrixValues } = summary;
 
@@ -142,11 +141,9 @@ function SummaryContent({
         ];
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <div className="rounded-md border bg-muted/40 p-3 text-xs">
-        <div className="font-semibold text-foreground">
-          {template.name ?? fallbackTemplate}
-        </div>
+        <div className="font-semibold text-foreground">{template.name}</div>
         <div className="mt-1 text-muted-foreground">
           {submission.client_name ?? fallbackName ?? "—"}
           {submission.client_email ? ` · ${submission.client_email}` : ""}
@@ -156,76 +153,82 @@ function SummaryContent({
         </div>
       </div>
 
-      {sectionsToRender.map((section) => {
-        const secFields =
-          sections.length > 0
-            ? fields.filter((f) => f.section_id === section.id)
-            : fields;
-        const visible = secFields.filter((f) => f.type !== "info");
-        if (visible.length === 0) return null;
+      {fields.length === 0 ? (
+        <p className="text-xs text-muted-foreground italic">
+          Nenhum campo preenchido neste formulário.
+        </p>
+      ) : (
+        sectionsToRender.map((section) => {
+          const secFields =
+            sections.length > 0
+              ? fields.filter((f) => f.section_id === section.id)
+              : fields;
+          const visible = secFields.filter((f) => f.type !== "info");
+          if (visible.length === 0) return null;
 
-        return (
-          <section key={section.id} className="space-y-2">
-            {section.title ? (
-              <div className="text-sm font-semibold uppercase tracking-wide text-foreground">
-                {section.title}
-              </div>
-            ) : null}
+          return (
+            <section key={section.id} className="space-y-2">
+              {section.title ? (
+                <div className="text-sm font-semibold uppercase tracking-wide text-foreground">
+                  {section.title}
+                </div>
+              ) : null}
 
-            <div className="space-y-2">
-              {visible.map((field) => {
-                if (isMatrix) {
+              <div className="space-y-2">
+                {visible.map((field) => {
+                  if (isMatrix) {
+                    return (
+                      <div key={field.id} className="rounded-md border p-3 text-sm">
+                        <div className="font-medium">{field.label}</div>
+                        <dl className="mt-2 grid gap-1 text-xs">
+                          {environments.map((env) => {
+                            const v = matrixByKey.get(`${field.id}::${env}`);
+                            return (
+                              <div key={env} className="flex items-baseline gap-2">
+                                <dt className="w-28 shrink-0 font-medium uppercase tracking-wide text-muted-foreground">
+                                  {env}
+                                </dt>
+                                <dd>
+                                  {formatFieldValue(field, v?.value ?? null)}
+                                  {v?.image_url ? (
+                                    <span className="ml-2 text-muted-foreground">
+                                      [imagem]
+                                    </span>
+                                  ) : null}
+                                </dd>
+                              </div>
+                            );
+                          })}
+                        </dl>
+                      </div>
+                    );
+                  }
+
+                  const v = valuesByField.get(field.id);
                   return (
-                    <div key={field.id} className="rounded-md border p-3 text-sm">
-                      <div className="font-medium">{field.label}</div>
-                      <dl className="mt-2 grid gap-1 text-xs">
-                        {environments.map((env) => {
-                          const v = matrixByKey.get(`${field.id}::${env}`);
-                          return (
-                            <div key={env} className="flex items-baseline gap-2">
-                              <dt className="w-28 shrink-0 font-medium uppercase tracking-wide text-muted-foreground">
-                                {env}
-                              </dt>
-                              <dd>
-                                {formatFieldValue(field, v?.value ?? null)}
-                                {v?.image_url ? (
-                                  <span className="ml-2 text-muted-foreground">
-                                    [imagem]
-                                  </span>
-                                ) : null}
-                              </dd>
-                            </div>
-                          );
-                        })}
-                      </dl>
+                    <div
+                      key={field.id}
+                      className="grid grid-cols-[140px_1fr] items-baseline gap-3 rounded-md border px-3 py-1.5 text-sm sm:grid-cols-[200px_1fr]"
+                    >
+                      <dt className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                        {field.label}
+                      </dt>
+                      <dd className="leading-tight">
+                        {formatFieldValue(field, v?.value ?? null)}
+                        {v?.image_url ? (
+                          <span className="ml-2 text-xs text-muted-foreground">
+                            [imagem anexada]
+                          </span>
+                        ) : null}
+                      </dd>
                     </div>
                   );
-                }
-
-                const v = valuesByField.get(field.id);
-                return (
-                  <div
-                    key={field.id}
-                    className="grid grid-cols-[140px_1fr] items-baseline gap-3 rounded-md border px-3 py-1.5 text-sm sm:grid-cols-[200px_1fr]"
-                  >
-                    <dt className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                      {field.label}
-                    </dt>
-                    <dd className="leading-tight">
-                      {formatFieldValue(field, v?.value ?? null)}
-                      {v?.image_url ? (
-                        <span className="ml-2 text-xs text-muted-foreground">
-                          [imagem anexada]
-                        </span>
-                      ) : null}
-                    </dd>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        );
-      })}
+                })}
+              </div>
+            </section>
+          );
+        })
+      )}
     </div>
   );
 }

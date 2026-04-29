@@ -748,8 +748,8 @@ export function TemplateBuilder({
           id="preview-panel"
           className="mt-4 !overflow-visible lg:mt-0 lg:!overflow-hidden"
         >
-          <div className="lg:sticky lg:top-28 lg:self-start lg:pl-1">
-            <Card className="lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto">
+          <div className="lg:pl-1">
+            <Card>
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0">

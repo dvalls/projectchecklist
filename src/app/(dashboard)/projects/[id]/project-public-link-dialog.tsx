@@ -132,8 +132,22 @@ export function ProjectPublicLinkDialog({ projectId, initialLinks, templates }: 
     }
   }
 
+  const activeLink = links.find((l) => l.is_active);
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <>
+      {activeLink ? (
+        <Button
+          variant="outline"
+          size="sm"
+          title="Copiar link público"
+          onClick={() => handleCopy(activeLink.token)}
+        >
+          <Copy className="mr-2 h-4 w-4" />
+          Copiar link
+        </Button>
+      ) : null}
+      <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
           <Send className="mr-2 h-4 w-4" />
@@ -261,5 +275,6 @@ export function ProjectPublicLinkDialog({ projectId, initialLinks, templates }: 
         </div>
       </DialogContent>
     </Dialog>
+    </>
   );
 }

@@ -26,6 +26,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { formatDateTime, getInitials } from "@/lib/format";
 import { identityIdentificationSchema } from "@/lib/schemas/public-link";
 import type { ClDesigner, ClDiscipline, ClProject } from "@/lib/supabase/types";
@@ -44,6 +45,39 @@ export interface PublicSubmissionHistoryItem {
   client_name: string | null;
   client_email: string | null;
   submitted_at: string;
+}
+
+interface SubmissionSession {
+  key: string;
+  client_name: string | null;
+  client_email: string | null;
+  submitted_at: string;
+  submissionIds: string[];
+  formNames: string[];
+}
+
+function buildSessions(items: PublicSubmissionHistoryItem[]): SubmissionSession[] {
+  const map = new Map<string, SubmissionSession>();
+  for (const item of items) {
+    const minute = item.submitted_at.substring(0, 16);
+    const key = `${item.client_email ?? "anon"}::${minute}`;
+    if (!map.has(key)) {
+      map.set(key, {
+        key,
+        client_name: item.client_name,
+        client_email: item.client_email,
+        submitted_at: item.submitted_at,
+        submissionIds: [],
+        formNames: [],
+      });
+    }
+    const session = map.get(key)!;
+    session.submissionIds.push(item.id);
+    if (!session.formNames.includes(item.template_name)) {
+      session.formNames.push(item.template_name);
+    }
+  }
+  return Array.from(map.values());
 }
 
 interface Props {
@@ -77,7 +111,9 @@ export function PublicCover({
   const [open, setOpen] = useState(false);
   const [clientName, setClientName] = useState("");
   const [clientEmail, setClientEmail] = useState("");
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [confirmDeleteSession, setConfirmDeleteSession] = useState<SubmissionSession | null>(
+    null,
+  );
   const [isDeleting, startDeleting] = useTransition();
 
   useEffect(() => {
@@ -96,22 +132,25 @@ export function PublicCover({
   const officeName = officeSettings?.office_name ?? null;
 
   function handleDeleteConfirm() {
-    if (!confirmDeleteId) return;
-    const id = confirmDeleteId;
-    const item = history.find((h) => h.id === id);
-    setConfirmDeleteId(null);
+    if (!confirmDeleteSession) return;
+    const session = confirmDeleteSession;
+    setConfirmDeleteSession(null);
     startDeleting(async () => {
-      const res = await deletePublicSubmission(token, id);
-      if (res.error) {
-        toast.error(res.error);
-      } else {
+      for (const id of session.submissionIds) {
+        const item = history.find((h) => h.id === id);
+        const res = await deletePublicSubmission(token, id);
+        if (res.error) {
+          toast.error(res.error);
+          router.refresh();
+          return;
+        }
         if (item?.client_email) {
           clearDraftProgress(token, item.template_id, item.client_email);
           clearDraftSubmission(token, item.template_id, item.client_email);
         }
-        toast.success("Preenchimento excluído.");
-        router.refresh();
       }
+      toast.success("Preenchimento excluído.");
+      router.refresh();
     });
   }
 
@@ -139,8 +178,11 @@ export function PublicCover({
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-muted/30">
+    <div className="flex min-h-screen flex-col bg-secondary dark:bg-background">
       <div className="relative h-64 w-full overflow-hidden bg-gradient-to-br from-primary/20 to-muted sm:h-72">
+        <div className="absolute right-3 top-3 z-10 rounded-full bg-background/50 backdrop-blur-sm">
+          <ThemeToggle />
+        </div>
         {coverUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={coverUrl} alt={project.name} className="h-full w-full object-cover" />
@@ -188,9 +230,9 @@ export function PublicCover({
                   return (
                     <div
                       key={d.id}
-                      className="flex items-center gap-3 rounded-lg border bg-background p-3 shadow-sm"
+                      className="flex items-center gap-3 rounded-lg border bg-card p-3 shadow-sm"
                     >
-                      <div className="h-12 w-12 shrink-0 overflow-hidden rounded-full border bg-muted">
+                      <div className="h-[108px] w-[108px] shrink-0 overflow-hidden rounded-full border bg-muted">
                         {photo ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
@@ -200,7 +242,7 @@ export function PublicCover({
                           />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-                            <User className="h-6 w-6" />
+                            <User className="h-9 w-9" />
                           </div>
                         )}
                       </div>
@@ -211,6 +253,11 @@ export function PublicCover({
                             {d.role}
                           </div>
                         ) : null}
+                        {d.formation ? (
+                          <div className="truncate text-xs text-muted-foreground/70">
+                            {d.formation}
+                          </div>
+                        ) : null}
                       </div>
                     </div>
                   );
@@ -219,7 +266,7 @@ export function PublicCover({
             </section>
           ) : null}
 
-          <section className="mb-8 rounded-lg border bg-background p-4 shadow-sm sm:p-6">
+          <section className="mb-8 rounded-lg border bg-card p-4 shadow-sm sm:p-6">
             <div className="mt-2 flex justify-stretch sm:mt-4 sm:justify-end">
               <Button
                 size="lg"
@@ -242,31 +289,30 @@ export function PublicCover({
                 </h2>
                 <DownloadFullReportButton token={token} projectName={project.name} />
               </div>
-              <div className="divide-y overflow-hidden rounded-lg border bg-background shadow-sm">
-                {history.map((item) => (
+              <div className="divide-y overflow-hidden rounded-lg border bg-card shadow-sm">
+                {buildSessions(history).map((session) => (
                   <div
-                    key={item.id}
+                    key={session.key}
                     className="flex flex-wrap items-center gap-3 px-4 py-3 sm:flex-nowrap"
                   >
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-                      {initials(item.client_name, item.client_email)}
+                      {initials(session.client_name, session.client_email)}
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-sm font-medium">
-                        {item.client_name ?? item.client_email ?? "Anônimo"}
+                        {session.client_name ?? session.client_email ?? "Anônimo"}
                       </div>
                       <div className="truncate text-xs text-muted-foreground">
-                        {item.template_name}
+                        {session.formNames.join(", ")}
                         {" · "}
-                        {formatDateTime(item.submitted_at)}
+                        {formatDateTime(session.submitted_at)}
                       </div>
                     </div>
                     <div className="flex w-full items-center gap-2 sm:w-auto">
                       <PublicSubmissionSummaryDialog
                         token={token}
-                        submissionId={item.id}
-                        clientName={item.client_name}
-                        templateName={item.template_name}
+                        submissionIds={session.submissionIds}
+                        clientName={session.client_name}
                         projectName={project.name}
                       />
                       {isProjectOwner ? (
@@ -274,7 +320,7 @@ export function PublicCover({
                           variant="ghost"
                           size="sm"
                           className="text-muted-foreground hover:text-destructive"
-                          onClick={() => setConfirmDeleteId(item.id)}
+                          onClick={() => setConfirmDeleteSession(session)}
                           disabled={isDeleting}
                           aria-label="Excluir preenchimento"
                         >
@@ -293,9 +339,9 @@ export function PublicCover({
       <PublicFooter officeSettings={officeSettings} />
 
       <AlertDialog
-        open={confirmDeleteId !== null}
+        open={confirmDeleteSession !== null}
         onOpenChange={(o) => {
-          if (!o) setConfirmDeleteId(null);
+          if (!o) setConfirmDeleteSession(null);
         }}
       >
         <AlertDialogContent>
