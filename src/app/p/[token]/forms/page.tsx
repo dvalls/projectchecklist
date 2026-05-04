@@ -51,7 +51,7 @@ export default async function PublicFormsListPage({
       .select("*")
       .eq("project_id", typedLink.project_id)
       .eq("is_public", true)
-      .order("created_at", { ascending: false }),
+      .order("position"),
     supabase
       .from("cl_form_submissions")
       .select("id, template_id, client_email, status")

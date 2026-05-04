@@ -11,9 +11,10 @@ import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/layout/empty-state";
 import { PageHeader } from "@/components/layout/page-header";
 
-import type { ClFormSubmission, ClFormTemplate } from "@/lib/supabase/types";
+import type { ClDiscipline, ClFormSubmission, ClFormTemplate } from "@/lib/supabase/types";
 
 import { ProjectCardMenu } from "./project-card-menu";
+import { ProjectPreviewButton } from "./project-preview-button";
 import { ProjectPublicSubmissionsDialog } from "./project-public-submissions-dialog";
 
 export const dynamic = "force-dynamic";
@@ -29,7 +30,7 @@ export default async function ProjectsPage() {
 
   const projectIds = (projects ?? []).map((p) => p.id);
 
-  const [{ data: publicSubmissions }, { data: templates }] = await Promise.all([
+  const [{ data: publicSubmissions }, { data: templates }, { data: disciplines }] = await Promise.all([
     projectIds.length > 0
       ? supabase
           .from("cl_form_submissions")
@@ -41,6 +42,7 @@ export default async function ProjectsPage() {
     projectIds.length > 0
       ? supabase.from("cl_form_templates").select("*").in("project_id", projectIds)
       : Promise.resolve({ data: [] as ClFormTemplate[] }),
+    supabase.from("cl_disciplines").select("*").order("position"),
   ]);
 
   const submissionsByProject = new Map<string, ClFormSubmission[]>();
@@ -153,7 +155,16 @@ export default async function ProjectsPage() {
                       </div>
                     </div>
                   </Link>
-                  <div className="absolute right-2 top-2 z-10">
+                  <div className="absolute right-2 top-2 z-10 flex items-center gap-1">
+                    <ProjectPreviewButton
+                      projectId={project.id}
+                      projectName={project.name}
+                      projectDescription={project.description}
+                      projectImageUrl={project.image_url}
+                      storageBaseUrl={storageBaseUrl}
+                      templates={projectTemplates}
+                      disciplines={(disciplines ?? []) as ClDiscipline[]}
+                    />
                     <ProjectCardMenu projectId={project.id} projectName={project.name} />
                   </div>
                 </div>

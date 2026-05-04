@@ -180,12 +180,17 @@ export function PublicFormsList({
       map.get(key)!.templates.push(t);
     }
     const arr = Array.from(map.values());
+    // Ordena grupos pela posição da disciplina
     arr.sort((a, b) => {
       if (!a.discipline && !b.discipline) return 0;
       if (!a.discipline) return 1;
       if (!b.discipline) return -1;
       return a.discipline.position - b.discipline.position;
     });
+    // Ordena templates dentro de cada grupo pela posição do formulário
+    for (const group of arr) {
+      group.templates.sort((a, b) => a.position - b.position);
+    }
     return arr;
   }, [templates, disciplines]);
 
@@ -290,7 +295,7 @@ export function PublicFormsList({
   return (
     <div className="flex min-h-screen flex-col bg-secondary dark:bg-background">
       <div className="border-b bg-background">
-        <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-3 px-4 py-4">
+        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-4">
           <BackLink href={`/p/${token}`}>Voltar à capa</BackLink>
           <div className="flex min-w-0 items-center gap-1">
             <div className="hidden text-right text-xs text-muted-foreground sm:block">
@@ -306,7 +311,7 @@ export function PublicFormsList({
         </div>
       </div>
 
-      <div className="mx-auto w-full max-w-5xl flex-1 space-y-6 px-4 py-6 sm:py-8">
+      <div className="mx-auto w-full max-w-6xl flex-1 space-y-6 px-4 py-6 sm:py-8">
         <div>
           <h1 className="break-words text-2xl font-semibold tracking-tight">
             {project.name}
@@ -463,7 +468,7 @@ export function PublicFormsList({
                             </CardContent>
                             {showProgressBar ? (
                               <CardFooter className="flex-col items-stretch gap-2 border-t bg-muted/20 p-3">
-                                <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+                                <div className="flex items-center gap-3 text-xs text-muted-foreground">
                                   <span>
                                     {formatQuestionCount(
                                       safeDoneAll,
@@ -477,9 +482,6 @@ export function PublicFormsList({
                                         {currentAnswered} agora)
                                       </span>
                                     ) : null}
-                                  </span>
-                                  <span>
-                                    {formatQuestionCount(remainingAll, "falta", "faltam")}
                                   </span>
                                 </div>
                                 <div

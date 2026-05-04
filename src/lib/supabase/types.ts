@@ -77,6 +77,7 @@ export interface ClFormTemplate {
   environments: string[] | null;
   is_public: boolean;
   is_template: boolean;
+  position: number;
   created_at: string;
   updated_at: string;
 }

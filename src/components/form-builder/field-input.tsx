@@ -103,19 +103,123 @@ export function FieldInputControl({
     />
   ) : null;
 
+  const isInlineType =
+    field.type === "text" ||
+    field.type === "number" ||
+    field.type === "date" ||
+    field.type === "select";
+
+  if (showLabel && isInlineType) {
+    const inputEl =
+      field.type === "text" ? (
+        <Input
+          className="flex-1 min-w-0"
+          value={value?.value ?? ""}
+          onChange={(e) => onChange({ value: e.target.value })}
+        />
+      ) : field.type === "number" ? (
+        <Input
+          type="number"
+          className="flex-1 min-w-0"
+          value={value?.value ?? ""}
+          onChange={(e) => onChange({ value: e.target.value })}
+        />
+      ) : field.type === "date" ? (
+        <Input
+          type="date"
+          className="flex-1 min-w-0"
+          value={value?.value ?? ""}
+          onChange={(e) => onChange({ value: e.target.value })}
+        />
+      ) : (
+        <div className="flex-1 min-w-0">
+          <Select
+            value={value?.value ?? ""}
+            onValueChange={(v) => onChange({ value: v })}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Selecione..." />
+            </SelectTrigger>
+            <SelectContent>
+              {choices.map((c) => (
+                <SelectItem key={c.value} value={c.value}>
+                  <ChoiceLabel label={c.label} recommended={c.recommended} />
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      );
+
+    const selectPhotoEl =
+      field.type === "select"
+        ? (() => {
+            const selected = choices.find((c) => c.value === value?.value);
+            if (selected?.image_url) {
+              return (
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <PhotoHintButton
+                    imagePath={selected.image_url}
+                    caption={selected.image_caption ?? null}
+                    alt={selected.label}
+                    size="sm"
+                  />
+                  <span>Foto da opção selecionada</span>
+                </div>
+              );
+            }
+            const withPhotos = choices.filter((c) => c.image_url);
+            if (withPhotos.length === 0) return null;
+            return (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                <span>Ver fotos:</span>
+                {withPhotos.map((c) => (
+                  <span key={c.value} className="inline-flex items-center gap-1">
+                    <PhotoHintButton
+                      imagePath={c.image_url}
+                      caption={c.image_caption ?? null}
+                      alt={c.label}
+                      size="xs"
+                    />
+                    <span>{c.label}</span>
+                  </span>
+                ))}
+              </div>
+            );
+          })()
+        : null;
+
+    return (
+      <div className="space-y-1.5">
+        <div className="flex items-center gap-3">
+          <Label className="w-36 shrink-0">
+            {field.label}
+            {field.required ? (
+              <span className="ml-1 text-destructive-foreground">*</span>
+            ) : null}
+          </Label>
+          {fieldPhotoButton}
+          {inputEl}
+        </div>
+        {selectPhotoEl}
+        {field.help_text ? (
+          <p className="text-xs italic text-muted-foreground">{field.help_text}</p>
+        ) : null}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-1.5">
       {showLabel ? (
-        <div className="rounded-md border border-dashed bg-muted/20 p-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <Label>
-              {field.label}
-              {field.required ? (
-                <span className="ml-1 text-destructive-foreground">*</span>
-              ) : null}
-            </Label>
-            {fieldPhotoButton}
-          </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Label>
+            {field.label}
+            {field.required ? (
+              <span className="ml-1 text-destructive-foreground">*</span>
+            ) : null}
+          </Label>
+          {fieldPhotoButton}
         </div>
       ) : null}
       {showLabel && field.help_text ? (

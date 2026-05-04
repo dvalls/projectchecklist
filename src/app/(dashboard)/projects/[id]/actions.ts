@@ -148,6 +148,68 @@ export async function setProjectLinkActive(linkId: string, isActive: boolean) {
   return ok();
 }
 
+export async function reorderProjectTemplates(projectId: string, orderedIds: string[]) {
+  const supabase = createClient();
+  const auth = await assertUser(supabase);
+  if (!auth.user) return fail(auth.error);
+
+  const { data: project } = await supabase
+    .from("cl_projects")
+    .select("id")
+    .eq("id", projectId)
+    .maybeSingle();
+  if (!project) return fail("Projeto não encontrado.");
+
+  const updates = orderedIds.map((id, i) =>
+    supabase.from("cl_form_templates").update({ position: i }).eq("id", id),
+  );
+  const results = await Promise.all(updates);
+  for (const { error } of results) {
+    if (error) return fail(error.message);
+  }
+
+  revalidatePath(`/projects/${projectId}`);
+  return ok();
+}
+
+export async function swapDisciplinePositions(id1: string, id2: string) {
+  const supabase = createClient();
+  const auth = await assertUser(supabase);
+  if (!auth.user) return fail(auth.error);
+
+  // Busca TODAS as disciplinas para normalizar posições e evitar colisões
+  const { data: all, error } = await supabase
+    .from("cl_disciplines")
+    .select("id, position")
+    .order("position");
+
+  if (error || !all) return fail(error?.message ?? "Erro ao buscar disciplinas.");
+
+  const typed = all as { id: string; position: number }[];
+
+  // Garante posições sequenciais únicas antes do swap
+  const normalized = typed.map((d, i) => ({ ...d, position: i }));
+  const idx1 = normalized.findIndex((d) => d.id === id1);
+  const idx2 = normalized.findIndex((d) => d.id === id2);
+  if (idx1 === -1 || idx2 === -1) return fail("Disciplinas não encontradas.");
+
+  // Troca as posições
+  [normalized[idx1].position, normalized[idx2].position] = [
+    normalized[idx2].position,
+    normalized[idx1].position,
+  ];
+
+  const updates = normalized.map((d) =>
+    supabase.from("cl_disciplines").update({ position: d.position }).eq("id", d.id),
+  );
+  const results = await Promise.all(updates);
+  for (const { error: e } of results) {
+    if (e) return fail(e.message);
+  }
+
+  return ok();
+}
+
 export async function deleteProjectLink(linkId: string) {
   const supabase = createClient();
   const auth = await assertUser(supabase);

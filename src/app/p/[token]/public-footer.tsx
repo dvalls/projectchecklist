@@ -115,7 +115,7 @@ export function PublicFooter({ officeSettings }: PublicFooterProps) {
 
   return (
     <footer className="shrink-0 border-t bg-background">
-      <div className="mx-auto flex min-h-16 max-w-5xl flex-col items-center justify-center gap-3 px-4 py-4 text-center sm:flex-row sm:justify-between sm:text-left">
+      <div className="mx-auto flex min-h-16 max-w-6xl flex-col items-center justify-center gap-3 px-4 py-4 text-center sm:flex-row sm:justify-between sm:text-left">
         <div className="flex flex-col items-center gap-2 sm:flex-row sm:gap-4">
           {officeName && (
             <p className="text-sm font-medium text-muted-foreground">{officeName}</p>

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Building2, FileText, LayoutGrid, Users } from "lucide-react";
+import { Building2, FileText, LayoutGrid, UserCog, Users } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -11,6 +11,7 @@ const tabs = [
   { href: "/settings/forms", label: "Formulários", icon: FileText },
   { href: "/settings/disciplines", label: "Disciplinas", icon: LayoutGrid },
   { href: "/settings/designers", label: "Projetistas", icon: Users },
+  { href: "/settings/users", label: "Usuários", icon: UserCog },
 ];
 
 export function SettingsTabs() {

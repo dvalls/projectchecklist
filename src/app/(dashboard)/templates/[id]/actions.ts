@@ -328,7 +328,7 @@ export async function saveAsTemplate(templateId: string) {
       description: typedSource.description,
       layout_mode: typedSource.layout_mode,
       environments: typedSource.environments,
-      is_public: false,
+      is_public: true,
     })
     .select("id")
     .single();
@@ -417,6 +417,29 @@ export async function saveAsTemplate(templateId: string) {
   return { success: true, templateId: newTemplateId };
 }
 
+export async function fetchTemplatePreview(templateId: string) {
+  const supabase = createClient();
+  const [{ data: sections, error: secErr }, { data: fields, error: fieldsErr }] =
+    await Promise.all([
+      supabase
+        .from("cl_form_sections")
+        .select("*")
+        .eq("template_id", templateId)
+        .order("position"),
+      supabase
+        .from("cl_form_fields")
+        .select("*")
+        .eq("template_id", templateId)
+        .order("position"),
+    ]);
+  if (secErr) return { error: secErr.message };
+  if (fieldsErr) return { error: fieldsErr.message };
+  return {
+    sections: (sections ?? []) as ClFormSection[],
+    fields: (fields ?? []) as ClFormField[],
+  };
+}
+
 export async function duplicateTemplate(templateId: string) {
   const supabase = createClient();
 
@@ -454,7 +477,7 @@ export async function duplicateTemplate(templateId: string) {
       description: typedSource.description,
       layout_mode: typedSource.layout_mode,
       environments: typedSource.environments,
-      is_public: false,
+      is_public: true,
     })
     .select("id")
     .single();

@@ -98,7 +98,7 @@ export async function importExistingTemplate(
       description: typedSource.description,
       layout_mode: typedSource.layout_mode,
       environments: typedSource.environments,
-      is_public: false,
+      is_public: true,
     })
     .select("id")
     .single();

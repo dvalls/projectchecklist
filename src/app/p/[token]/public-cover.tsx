@@ -193,7 +193,7 @@ export function PublicCover({
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
         <div className="absolute inset-x-0 bottom-0 px-4 py-5 text-white sm:px-6 sm:py-6">
-          <div className="mx-auto max-w-5xl">
+          <div className="mx-auto max-w-6xl">
             <p className="text-xs uppercase tracking-wider text-white/80">
               Checklist do projeto
             </p>
@@ -210,7 +210,7 @@ export function PublicCover({
       </div>
 
       <div className="flex-1 px-4 py-6 sm:px-6 sm:py-10">
-        <div className="mx-auto max-w-5xl space-y-8">
+        <div className="mx-auto max-w-6xl space-y-8">
           {designers.length > 0 ? (
             <section className="pt-0 sm:mt-[40px]">
               {officeLogoUrl && (
@@ -247,14 +247,14 @@ export function PublicCover({
                         )}
                       </div>
                       <div className="min-w-0">
-                        <div className="truncate font-medium">{d.name}</div>
+                        <div className="font-medium">{d.name}</div>
                         {d.role ? (
-                          <div className="truncate text-xs text-muted-foreground">
+                          <div className="text-xs text-muted-foreground">
                             {d.role}
                           </div>
                         ) : null}
                         {d.formation ? (
-                          <div className="truncate text-xs text-muted-foreground/70">
+                          <div className="text-xs text-muted-foreground/70">
                             {d.formation}
                           </div>
                         ) : null}
@@ -266,19 +266,17 @@ export function PublicCover({
             </section>
           ) : null}
 
-          <section className="mb-8 rounded-lg border bg-card p-4 shadow-sm sm:p-6">
-            <div className="mt-2 flex justify-stretch sm:mt-4 sm:justify-end">
-              <Button
-                size="lg"
-                onClick={handleStart}
-                disabled={formCount === 0}
-                className="group w-full animate-glow-pulse transition-all duration-200 hover:scale-105 active:scale-95 sm:w-auto"
-              >
-                <Play className="mr-2 h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
-                Iniciar preenchimento
-              </Button>
-            </div>
-          </section>
+          <div className="mb-8 flex justify-stretch sm:justify-end">
+            <Button
+              size="lg"
+              onClick={handleStart}
+              disabled={formCount === 0}
+              className="group w-full animate-glow-pulse transition-all duration-200 hover:scale-105 active:scale-95 sm:w-auto"
+            >
+              <Play className="mr-2 h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+              Iniciar preenchimento
+            </Button>
+          </div>
 
           {history.length > 0 ? (
             <section>

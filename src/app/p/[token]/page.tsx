@@ -1,8 +1,9 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { BUCKETS, OFFICE_PUBLIC_FIELDS } from "@/lib/constants";
 import { getActivePublicLink } from "@/lib/public-link";
-import { getPublicBucketBaseUrl } from "@/lib/storage";
+import { getPublicAssetUrl, getPublicBucketBaseUrl } from "@/lib/storage";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import type {
@@ -18,6 +19,53 @@ import { InactiveLinkCard } from "./inactive-link-card";
 import { PublicCover } from "./public-cover";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: { token: string };
+}): Promise<Metadata> {
+  const lookup = await getActivePublicLink(params.token);
+  if (lookup.status !== "ok") return { title: "Checklist público" };
+
+  const { project } = lookup;
+  const supabase = createServiceRoleClient();
+  const { data: officeData } = await supabase
+    .from("cl_office_settings")
+    .select(OFFICE_PUBLIC_FIELDS)
+    .eq("user_id", project.created_by)
+    .maybeSingle();
+
+  const office = officeData as Pick<ClOfficeSettings, "office_name" | "logo_url"> | null;
+  const siteName = office?.office_name ?? "Checklist";
+  const title = project.name;
+  const description =
+    project.description ?? `Checklist do projeto ${title} — ${siteName}`;
+
+  const imageUrl = project.image_url
+    ? getPublicAssetUrl(BUCKETS.CHECKLIST_IMAGES, project.image_url)
+    : office?.logo_url
+      ? getPublicAssetUrl(BUCKETS.CHECKLIST_IMAGES, office.logo_url)
+      : undefined;
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      siteName,
+      images: imageUrl ? [{ url: imageUrl, width: 1200, height: 630 }] : [],
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: imageUrl ? [imageUrl] : [],
+    },
+  };
+}
 
 export default async function PublicChecklistCoverPage({
   params,

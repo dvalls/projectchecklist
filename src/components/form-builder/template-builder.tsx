@@ -313,6 +313,25 @@ export function TemplateBuilder({
     if (expandedFieldLocalId === localId) setExpandedFieldLocalId(null);
   }
 
+  function duplicateField(localId: string) {
+    setFields((prev) => {
+      const idx = prev.findIndex((f) => f.localId === localId);
+      if (idx < 0) return prev;
+      const original = prev[idx];
+      const copy: EditorField = {
+        ...original,
+        localId: newLocalId(),
+        id: undefined,
+        label: original.label ? `${original.label} (cópia)` : "",
+      };
+      const next = [...prev];
+      next.splice(idx + 1, 0, copy);
+      setExpandedFieldLocalId(copy.localId);
+      setJustCreatedLocalId(null);
+      return next;
+    });
+  }
+
   function moveField(localId: string, sectionLocalId: string) {
     setFields((prev) =>
       prev.map((f) =>
@@ -703,6 +722,7 @@ export function TemplateBuilder({
                                     updateField(field.localId, updater)
                                   }
                                   onDelete={() => deleteField(field.localId)}
+                                  onDuplicate={() => duplicateField(field.localId)}
                                   onMoveToSection={(secId) =>
                                     moveField(field.localId, secId)
                                   }

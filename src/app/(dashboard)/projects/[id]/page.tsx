@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Copy, FileText, Plus, User } from "lucide-react";
 
@@ -14,15 +13,14 @@ import type {
   ClPublicLink,
 } from "@/lib/supabase/types";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/layout/empty-state";
 import { NewTemplateDialog } from "./templates/new-template-dialog";
 import {
   ImportExistingTemplateDialog,
   type ImportableTemplate,
 } from "./templates/import-existing-dialog";
+import { TemplatesPanel } from "./templates/templates-panel";
 import { ProjectPublicLinkDialog } from "./project-public-link-dialog";
 
 export const dynamic = "force-dynamic";
@@ -51,7 +49,7 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
       .from("cl_form_templates")
       .select("*, cl_disciplines(name, color)")
       .eq("project_id", params.id)
-      .order("created_at", { ascending: false }),
+      .order("position"),
     supabase
       .from("cl_form_templates")
       .select("id, name, project_id, cl_disciplines(name, color)")
@@ -152,40 +150,12 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
           </div>
         </div>
 
-        {templates && templates.length > 0 ? (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {templates.map((t) => {
-              const discipline = (
-                t as unknown as {
-                  cl_disciplines: { name: string; color: string } | null;
-                }
-              ).cl_disciplines;
-              return (
-                <Link key={t.id} href={`/templates/${t.id}`} className="block">
-                  <Card className="h-full transition-colors hover:border-primary/40">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="line-clamp-1 text-base">{t.name}</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      {discipline ? (
-                        <Badge
-                          variant="outline"
-                          style={{
-                            borderColor: discipline.color,
-                            color: discipline.color,
-                          }}
-                        >
-                          {discipline.name}
-                        </Badge>
-                      ) : (
-                        <Badge variant="secondary">Sem disciplina</Badge>
-                      )}
-                    </CardContent>
-                  </Card>
-                </Link>
-              );
-            })}
-          </div>
+        {typedTemplates.length > 0 ? (
+          <TemplatesPanel
+            projectId={project.id}
+            initialTemplates={typedTemplates}
+            initialDisciplines={typedDisciplines}
+          />
         ) : (
           <EmptyState
             icon={<FileText className="h-5 w-5" />}

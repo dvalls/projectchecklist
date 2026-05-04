@@ -7,6 +7,7 @@ import {
   Asterisk,
   ChevronDown,
   ChevronRight,
+  Copy,
   EyeOff,
   GripVertical,
   Image as ImageIcon,
@@ -74,6 +75,7 @@ interface Props {
   onToggle: () => void;
   onChange: (updater: (f: EditorField) => EditorField) => void;
   onDelete: () => void;
+  onDuplicate: () => void;
   onMoveToSection: (sectionLocalId: string) => void;
 }
 
@@ -87,6 +89,7 @@ export function FieldAccordionItem({
   onToggle,
   onChange,
   onDelete,
+  onDuplicate,
   onMoveToSection,
 }: Props) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
@@ -229,6 +232,20 @@ export function FieldAccordionItem({
         </div>
 
         <div className="flex items-center gap-0.5">
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            className="h-7 w-7 text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDuplicate();
+            }}
+            title="Duplicar"
+            aria-label="Duplicar campo"
+          >
+            <Copy className="h-3.5 w-3.5" />
+          </Button>
           <Button
             type="button"
             size="icon"
