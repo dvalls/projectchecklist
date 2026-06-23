@@ -108,7 +108,7 @@ export default async function PublicChecklistCoverPage({
       .select(
         "id, template_id, client_name, client_email, submitted_at, created_at, status",
       )
-      .eq("public_link_id", typedLink.id)
+      .eq("project_id", typedLink.project_id)
       .eq("status", "submitted")
       .order("submitted_at", { ascending: false }),
     supabase

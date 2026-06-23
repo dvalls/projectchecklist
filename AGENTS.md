@@ -141,3 +141,51 @@ O **header fixo** das páginas internas usa margem negativa para sangrar além
 do padding da página. As constantes `PAGE_PADDING_TOP` e `PAGE_PADDING_H`
 devem ser mantidas em sincronia com o `paddingTop`/`paddingHorizontal` do
 estilo `page`.
+
+**Campos vazios são omitidos** no PDF e no resumo de submissão: só aparecem
+campos com `value` preenchido ou `image_url` definido. A função local
+`isFilled(value, imageUrl)` centraliza essa checagem — reutilize-a em vez de
+comparações inline.
+
+**Layout dos campos de matriz no PDF:**
+- Se todas as respostas forem "Sim"/"Não" (`isShortYesNo`), usa grade de 3
+  colunas compacta.
+- Qualquer resposta longa força coluna única, com ambiente em 30% e valor em
+  70% da linha.
+
+## Escopo das submissões: `project_id` (não `public_link_id`)
+
+As submissões são autorizadas pelo **`project_id`**, não pelo `public_link_id`
+do link que originou o preenchimento. Isso permite que submissões criadas via
+links diferentes (ou links expirados/substituídos) continuem visíveis no
+relatório e no resumo do projeto.
+
+Ao validar se uma submissão pertence ao contexto do token, compare:
+
+```ts
+submissão.project_id === link.project_id  // correto
+submissão.public_link_id === link.id      // ERRADO — não usar
+```
+
+Consultas de listagem de submissões também usam `.eq("project_id", ...)`.
+
+## Consolidação de submissões no relatório (`getPublicFullReport`)
+
+Quando um cliente reenvia o mesmo formulário (mesmo `client_email` +
+`template_id`), a action **mescla** as submissões em vez de exibi-las
+separadamente. A lógica (em `actions.ts`):
+
+1. Agrupa por chave `${template_id}::${client_email.toLowerCase()}`.
+2. Itera em ordem crescente de `submitted_at` (ASC); o último `submitted_at`
+   vira o cabeçalho da entrada.
+3. Para cada campo/ambiente, mantém apenas o **valor mais recente preenchido**
+   (sobrescreve anteriores se não estiver vazio).
+4. Entradas sem nenhum campo preenchido são descartadas antes de montar o PDF.
+
+Não altere a ordenação da query sem ajustar essa lógica.
+
+## Link público único por projeto
+
+O botão "Gerar link" (`project-public-link-dialog.tsx`) só é exibido quando
+não há nenhum link cadastrado (`links.length === 0`). Cada projeto deve ter no
+máximo um link ativo; criar múltiplos links já não é suportado pela UI.

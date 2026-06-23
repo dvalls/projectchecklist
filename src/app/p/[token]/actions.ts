@@ -177,18 +177,18 @@ export async function getPublicSessionSummary(
 
   const { data: link } = await supabase
     .from("cl_public_links")
-    .select("id, is_active")
+    .select("id, project_id, is_active")
     .eq("token", token)
     .maybeSingle();
 
-  const typedLink = link as { id: string; is_active: boolean } | null;
+  const typedLink = link as { id: string; project_id: string; is_active: boolean } | null;
   if (!typedLink) return { error: "Link inválido." };
   if (!typedLink.is_active) return { error: "Link desativado." };
 
   const { data: submissions } = await supabase
     .from("cl_form_submissions")
     .select(
-      "id, template_id, public_link_id, client_name, client_email, submitted_at, created_at, status",
+      "id, template_id, project_id, client_name, client_email, submitted_at, created_at, status",
     )
     .in("id", submissionIds);
 
@@ -198,7 +198,7 @@ export async function getPublicSessionSummary(
     ClFormSubmission,
     | "id"
     | "template_id"
-    | "public_link_id"
+    | "project_id"
     | "client_name"
     | "client_email"
     | "submitted_at"
@@ -206,8 +206,8 @@ export async function getPublicSessionSummary(
     | "status"
   >[];
 
-  if (typedSubs.some((s) => s.public_link_id !== typedLink.id)) {
-    return { error: "Submissão não pertence a este link." };
+  if (typedSubs.some((s) => s.project_id !== typedLink.project_id)) {
+    return { error: "Submissão não pertence a este projeto." };
   }
 
   const templateIds = [...new Set(typedSubs.map((s) => s.template_id))];
@@ -309,18 +309,18 @@ export async function getPublicSubmissionSummary(
 
   const { data: link } = await supabase
     .from("cl_public_links")
-    .select("id, is_active")
+    .select("id, project_id, is_active")
     .eq("token", token)
     .maybeSingle();
 
-  const typedLink = link as { id: string; is_active: boolean } | null;
+  const typedLink = link as { id: string; project_id: string; is_active: boolean } | null;
   if (!typedLink) return { error: "Link inválido." };
   if (!typedLink.is_active) return { error: "Link desativado." };
 
   const { data: submission } = await supabase
     .from("cl_form_submissions")
     .select(
-      "id, template_id, public_link_id, client_name, client_email, submitted_at, created_at, status",
+      "id, template_id, project_id, client_name, client_email, submitted_at, created_at, status",
     )
     .eq("id", submissionId)
     .maybeSingle();
@@ -329,7 +329,7 @@ export async function getPublicSubmissionSummary(
     ClFormSubmission,
     | "id"
     | "template_id"
-    | "public_link_id"
+    | "project_id"
     | "client_name"
     | "client_email"
     | "submitted_at"
@@ -338,8 +338,8 @@ export async function getPublicSubmissionSummary(
   > | null;
 
   if (!typedSubmission) return { error: "Submissão não encontrada." };
-  if (typedSubmission.public_link_id !== typedLink.id) {
-    return { error: "Submissão não pertence a este link." };
+  if (typedSubmission.project_id !== typedLink.project_id) {
+    return { error: "Submissão não pertence a este projeto." };
   }
 
   const [
@@ -483,7 +483,7 @@ export async function getPublicFullReport(
       .select(
         "id, template_id, client_name, client_email, submitted_at, created_at, status",
       )
-      .eq("public_link_id", typedLink.id)
+      .eq("project_id", typedLink.project_id)
       .eq("status", "submitted")
       .order("submitted_at", { ascending: true }),
     supabase.from("cl_disciplines").select("*").order("position"),
@@ -585,14 +585,56 @@ export async function getPublicFullReport(
     matrixBySubmission.set(v.submission_id, arr);
   }
 
-  const submissionsByTemplate = new Map<
+  // Consolida as submissões por (template_id, client_email): mescla campo a campo,
+  // mantendo sempre a última resposta preenchida (caso o cliente tenha reescrito).
+  // typedSubmissions chega em ASC por submitted_at, então a iteração em ordem faz
+  // o valor mais recente sobrescrever os anteriores.
+  const isFilledValue = (value: string | null, imageUrl: string | null) =>
+    (value !== null && value !== "") || !!imageUrl;
+
+  type ConsolidatedSubmission = {
+    submission: (typeof typedSubmissions)[number];
+    values: ClSubmissionValue[];
+    matrixValues: ClSubmissionValueMatrix[];
+  };
+
+  const groups = new Map<
     string,
-    Array<(typeof typedSubmissions)[number]>
+    {
+      latest: (typeof typedSubmissions)[number];
+      valuesByField: Map<string, ClSubmissionValue>;
+      matrixByKey: Map<string, ClSubmissionValueMatrix>;
+    }
   >();
+
   for (const s of typedSubmissions) {
-    const arr = submissionsByTemplate.get(s.template_id) ?? [];
-    arr.push(s);
-    submissionsByTemplate.set(s.template_id, arr);
+    const key = `${s.template_id}::${(s.client_email ?? "").toLowerCase()}`;
+    let group = groups.get(key);
+    if (!group) {
+      group = { latest: s, valuesByField: new Map(), matrixByKey: new Map() };
+      groups.set(key, group);
+    }
+    group.latest = s; // ASC: a última iteração é a mais recente
+    for (const v of valuesBySubmission.get(s.id) ?? []) {
+      if (!isFilledValue(v.value, v.image_url)) continue;
+      group.valuesByField.set(v.field_id, v);
+    }
+    for (const v of matrixBySubmission.get(s.id) ?? []) {
+      if (!isFilledValue(v.value, v.image_url)) continue;
+      group.matrixByKey.set(`${v.field_id}::${v.env_key}`, v);
+    }
+  }
+
+  const submissionsByTemplate = new Map<string, ConsolidatedSubmission[]>();
+  for (const group of groups.values()) {
+    const consolidated: ConsolidatedSubmission = {
+      submission: group.latest,
+      values: Array.from(group.valuesByField.values()),
+      matrixValues: Array.from(group.matrixByKey.values()),
+    };
+    const arr = submissionsByTemplate.get(group.latest.template_id) ?? [];
+    arr.push(consolidated);
+    submissionsByTemplate.set(group.latest.template_id, arr);
   }
 
   const disciplinesInUse = new Set(
@@ -619,11 +661,9 @@ export async function getPublicFullReport(
   }
 
   const templatesReport: ReportTemplateEntry[] = typedTemplates.map((t) => {
-    const subs = (submissionsByTemplate.get(t.id) ?? []).map((s) => ({
-      submission: s,
-      values: valuesBySubmission.get(s.id) ?? [],
-      matrixValues: matrixBySubmission.get(s.id) ?? [],
-    }));
+    const subs = (submissionsByTemplate.get(t.id) ?? []).filter(
+      ({ values, matrixValues }) => values.length > 0 || matrixValues.length > 0,
+    );
     return {
       template: {
         id: t.id,
@@ -692,18 +732,18 @@ export async function deletePublicSubmission(
 
   const { data: submission } = await supabase
     .from("cl_form_submissions")
-    .select("id, public_link_id")
+    .select("id, project_id")
     .eq("id", submissionId)
     .maybeSingle();
 
   const typedSubmission = submission as {
     id: string;
-    public_link_id: string | null;
+    project_id: string;
   } | null;
 
   if (!typedSubmission) return { error: "Preenchimento não encontrado." };
-  if (typedSubmission.public_link_id !== typedLink.id) {
-    return { error: "Preenchimento não pertence a este link." };
+  if (typedSubmission.project_id !== typedLink.project_id) {
+    return { error: "Preenchimento não pertence a este projeto." };
   }
 
   await Promise.all([

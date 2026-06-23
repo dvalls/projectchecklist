@@ -9,7 +9,7 @@ import type { ClFormSection } from "@/lib/supabase/types";
 
 import { getPublicSessionSummary, type PublicSubmissionSummary } from "./actions";
 import { DownloadSessionPdfButton } from "./pdf/download-buttons";
-import { formatDateTime, formatFieldValue } from "./pdf/format-value";
+import { formatFieldValue } from "./pdf/format-value";
 
 interface Props {
   token: string;
@@ -93,11 +93,7 @@ export function PublicSubmissionSummaryDialog({
             ) : summaries ? (
               <div className="space-y-8">
                 {summaries.map((summary) => (
-                  <SummaryContent
-                    key={summary.submission.id}
-                    summary={summary}
-                    fallbackName={clientName}
-                  />
+                  <SummaryContent key={summary.submission.id} summary={summary} />
                 ))}
               </div>
             ) : null}
@@ -108,14 +104,12 @@ export function PublicSubmissionSummaryDialog({
   );
 }
 
-function SummaryContent({
-  summary,
-  fallbackName,
-}: {
-  summary: PublicSubmissionSummary;
-  fallbackName: string | null;
-}) {
-  const { submission, template, sections, fields, values, matrixValues } = summary;
+function isFilled(value: string | null | undefined, imageUrl: string | null | undefined) {
+  return (value !== null && value !== undefined && value !== "") || !!imageUrl;
+}
+
+function SummaryContent({ summary }: { summary: PublicSubmissionSummary }) {
+  const { template, sections, fields, values, matrixValues } = summary;
 
   const valuesByField = new Map(values.map((v) => [v.field_id, v] as const));
   const matrixByKey = new Map(
@@ -140,95 +134,96 @@ function SummaryContent({
           },
         ];
 
+  const fieldHasAnswer = (field: PublicSubmissionSummary["fields"][number]) => {
+    if (isMatrix) {
+      return environments.some((env) => {
+        const v = matrixByKey.get(`${field.id}::${env}`);
+        return isFilled(v?.value, v?.image_url);
+      });
+    }
+    const v = valuesByField.get(field.id);
+    return isFilled(v?.value, v?.image_url);
+  };
+
+  const renderedSections = sectionsToRender
+    .map((section) => {
+      const secFields =
+        sections.length > 0 ? fields.filter((f) => f.section_id === section.id) : fields;
+      const visible = secFields.filter((f) => f.type !== "info" && fieldHasAnswer(f));
+      if (visible.length === 0) return null;
+      return { section, visible };
+    })
+    .filter((x): x is { section: ClFormSection; visible: typeof fields } => Boolean(x));
+
+  if (renderedSections.length === 0) return null;
+
   return (
     <div className="space-y-4">
-      <div className="rounded-md border bg-muted/40 p-3 text-xs">
-        <div className="font-semibold text-foreground">{template.name}</div>
-        <div className="mt-1 text-muted-foreground">
-          {submission.client_name ?? fallbackName ?? "—"}
-          {submission.client_email ? ` · ${submission.client_email}` : ""}
-        </div>
-        <div className="mt-0.5 text-muted-foreground">
-          Enviado em {formatDateTime(submission.submitted_at ?? submission.created_at)}
-        </div>
-      </div>
+      {renderedSections.map(({ section, visible }) => (
+        <section key={section.id} className="space-y-2">
+          {section.title ? (
+            <div className="text-sm font-semibold uppercase tracking-wide text-foreground">
+              {section.title}
+            </div>
+          ) : null}
 
-      {fields.length === 0 ? (
-        <p className="text-xs italic text-muted-foreground">
-          Nenhum campo preenchido neste formulário.
-        </p>
-      ) : (
-        sectionsToRender.map((section) => {
-          const secFields =
-            sections.length > 0
-              ? fields.filter((f) => f.section_id === section.id)
-              : fields;
-          const visible = secFields.filter((f) => f.type !== "info");
-          if (visible.length === 0) return null;
+          <div className="space-y-2">
+            {visible.map((field) => {
+              if (isMatrix) {
+                const filledEnvs = environments.filter((env) => {
+                  const v = matrixByKey.get(`${field.id}::${env}`);
+                  return isFilled(v?.value, v?.image_url);
+                });
+                return (
+                  <div key={field.id} className="rounded-md border p-3 text-sm">
+                    <div className="font-medium">{field.label}</div>
+                    <dl className="mt-2 grid gap-1 text-xs">
+                      {filledEnvs.map((env) => {
+                        const v = matrixByKey.get(`${field.id}::${env}`);
+                        return (
+                          <div key={env} className="flex items-baseline gap-2">
+                            <dt className="w-28 shrink-0 font-medium uppercase tracking-wide text-muted-foreground">
+                              {env}
+                            </dt>
+                            <dd>
+                              {formatFieldValue(field, v?.value ?? null)}
+                              {v?.image_url ? (
+                                <span className="ml-2 text-muted-foreground">
+                                  [imagem]
+                                </span>
+                              ) : null}
+                            </dd>
+                          </div>
+                        );
+                      })}
+                    </dl>
+                  </div>
+                );
+              }
 
-          return (
-            <section key={section.id} className="space-y-2">
-              {section.title ? (
-                <div className="text-sm font-semibold uppercase tracking-wide text-foreground">
-                  {section.title}
+              const v = valuesByField.get(field.id);
+              return (
+                <div
+                  key={field.id}
+                  className="grid grid-cols-[140px_1fr] items-baseline gap-3 rounded-md border px-3 py-1.5 text-sm sm:grid-cols-[200px_1fr]"
+                >
+                  <dt className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                    {field.label}
+                  </dt>
+                  <dd className="leading-tight">
+                    {formatFieldValue(field, v?.value ?? null)}
+                    {v?.image_url ? (
+                      <span className="ml-2 text-xs text-muted-foreground">
+                        [imagem anexada]
+                      </span>
+                    ) : null}
+                  </dd>
                 </div>
-              ) : null}
-
-              <div className="space-y-2">
-                {visible.map((field) => {
-                  if (isMatrix) {
-                    return (
-                      <div key={field.id} className="rounded-md border p-3 text-sm">
-                        <div className="font-medium">{field.label}</div>
-                        <dl className="mt-2 grid gap-1 text-xs">
-                          {environments.map((env) => {
-                            const v = matrixByKey.get(`${field.id}::${env}`);
-                            return (
-                              <div key={env} className="flex items-baseline gap-2">
-                                <dt className="w-28 shrink-0 font-medium uppercase tracking-wide text-muted-foreground">
-                                  {env}
-                                </dt>
-                                <dd>
-                                  {formatFieldValue(field, v?.value ?? null)}
-                                  {v?.image_url ? (
-                                    <span className="ml-2 text-muted-foreground">
-                                      [imagem]
-                                    </span>
-                                  ) : null}
-                                </dd>
-                              </div>
-                            );
-                          })}
-                        </dl>
-                      </div>
-                    );
-                  }
-
-                  const v = valuesByField.get(field.id);
-                  return (
-                    <div
-                      key={field.id}
-                      className="grid grid-cols-[140px_1fr] items-baseline gap-3 rounded-md border px-3 py-1.5 text-sm sm:grid-cols-[200px_1fr]"
-                    >
-                      <dt className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                        {field.label}
-                      </dt>
-                      <dd className="leading-tight">
-                        {formatFieldValue(field, v?.value ?? null)}
-                        {v?.image_url ? (
-                          <span className="ml-2 text-xs text-muted-foreground">
-                            [imagem anexada]
-                          </span>
-                        ) : null}
-                      </dd>
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-          );
-        })
-      )}
+              );
+            })}
+          </div>
+        </section>
+      ))}
     </div>
   );
 }

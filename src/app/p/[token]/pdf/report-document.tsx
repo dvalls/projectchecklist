@@ -325,6 +325,13 @@ function stripEmoji(text: string): string {
 // Demais (checkbox, select, radio, date, number...): pergunta 75% / resposta 25%.
 const STACKED_FIELD_TYPES = new Set<ClFormField["type"]>(["text", "textarea"]);
 
+// Respostas curtas (Sim/Não) ficam bem na coluna de 25%; qualquer outra resposta
+// é empilhada (label numa linha, valor na seguinte) para não espremer/quebrar o texto.
+function isShortYesNo(value: string): boolean {
+  const normalized = value.trim().toLowerCase();
+  return normalized === "sim" || normalized === "não" || normalized === "nao";
+}
+
 function FieldRow({
   field,
   formattedValue,
@@ -336,7 +343,9 @@ function FieldRow({
   imgUrl: string | null;
   isAlt: boolean;
 }) {
-  const isStacked = STACKED_FIELD_TYPES.has(field.type);
+  const isStacked =
+    STACKED_FIELD_TYPES.has(field.type) ||
+    (formattedValue !== "—" && !isShortYesNo(formattedValue));
 
   if (isStacked) {
     return (
@@ -366,6 +375,10 @@ function FieldRow({
       </View>
     </View>
   );
+}
+
+function isFilled(value: string | null | undefined, imageUrl: string | null | undefined) {
+  return (value !== null && value !== undefined && value !== "") || !!imageUrl;
 }
 
 function SectionedFields({
@@ -407,7 +420,12 @@ function SectionedFields({
     .map((section) => {
       const secFields =
         sections.length > 0 ? fields.filter((f) => f.section_id === section.id) : fields;
-      const visible = secFields.filter((f) => f.type !== "info");
+      const visible = secFields.filter((f) => {
+        if (f.type === "info") return false;
+        if (isMatrix) return true; // matrix fields filtered per-environment below
+        const v = valuesByField.get(f.id);
+        return isFilled(v?.value, v?.image_url);
+      });
       if (visible.length === 0) return null;
       return { section, visible };
     })
@@ -427,13 +445,31 @@ function SectionedFields({
                 <Text style={styles.formSectionTitle}>{section.title}</Text>
               ) : null}
               {visible.map((field) => {
-                const perCol = Math.ceil(environments.length / 3);
-                const envCols = [
-                  environments.slice(0, perCol),
-                  environments.slice(perCol, perCol * 2),
-                  environments.slice(perCol * 2),
-                ];
-                const isStacked = STACKED_FIELD_TYPES.has(field.type);
+                const filledEnvs = environments.filter((env) => {
+                  const v = matrixByKey.get(`${field.id}::${env}`);
+                  return isFilled(v?.value, v?.image_url);
+                });
+                if (filledEnvs.length === 0) return null;
+                // Se todas as respostas forem curtas (Sim/Não), mantém a grade
+                // compacta de 3 colunas; caso contrário (texto longo, listas de
+                // equipamentos...), usa coluna única em largura total e empilhada.
+                const allShort = filledEnvs.every((env) => {
+                  const v = matrixByKey.get(`${field.id}::${env}`);
+                  return isShortYesNo(formatFieldValue(field, v?.value ?? null));
+                });
+                // Respostas longas: coluna única em largura total, mas com ambiente
+                // e valor na MESMA linha (ambiente estreito, valor ocupando o resto).
+                const wide = !allShort;
+                const numCols = allShort ? 3 : 1;
+                const perCol = Math.ceil(filledEnvs.length / numCols);
+                const envCols =
+                  numCols === 3
+                    ? [
+                        filledEnvs.slice(0, perCol),
+                        filledEnvs.slice(perCol, perCol * 2),
+                        filledEnvs.slice(perCol * 2),
+                      ]
+                    : [filledEnvs];
                 return (
                   <View key={field.id} style={styles.matrixBlock} wrap={false}>
                     <Text style={styles.matrixFieldLabel}>{field.label}</Text>
@@ -449,26 +485,20 @@ function SectionedFields({
                             const formatted = formatFieldValue(field, v?.value ?? null);
                             return (
                               <View key={env} style={{ marginBottom: 2 }}>
-                                <View
-                                  style={[
-                                    styles.matrixRow,
-                                    isStacked ? { flexDirection: "column" } : {},
-                                  ]}
-                                >
+                                <View style={styles.matrixRow}>
                                   <Text
                                     style={[
                                       styles.matrixEnv,
-                                      isStacked ? styles.matrixEnvStacked : {},
+                                      wide ? { width: "30%" } : {},
                                     ]}
                                   >
                                     {env}
                                   </Text>
                                   <Text
-                                    style={
-                                      isStacked
-                                        ? styles.matrixValueStacked
-                                        : styles.matrixValue
-                                    }
+                                    style={[
+                                      styles.matrixValue,
+                                      wide ? { width: "70%" } : {},
+                                    ]}
                                   >
                                     {formatted}
                                   </Text>
@@ -668,7 +698,8 @@ function SubmissionBlock({
 }
 
 export function ReportDocument({ data }: { data: PublicFullReport }) {
-  const hasContent = data.templates.length > 0;
+  const templatesWithSubmissions = data.templates.filter((t) => t.submissions.length > 0);
+  const hasContent = templatesWithSubmissions.length > 0;
 
   return (
     <Document
@@ -678,7 +709,7 @@ export function ReportDocument({ data }: { data: PublicFullReport }) {
       <Cover data={data} />
 
       {hasContent ? (
-        data.templates.map((entry) => (
+        templatesWithSubmissions.map((entry) => (
           <Page key={entry.template.id} size="A4" style={styles.page}>
             <View style={styles.pageHeader} fixed>
               <Text style={styles.pageHeaderText}>{stripEmoji(data.project.name)}</Text>

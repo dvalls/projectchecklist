@@ -163,16 +163,18 @@ export function ProjectPublicLinkDialog({ projectId, initialLinks, templates }: 
           </DialogHeader>
 
           <div className="space-y-6">
-            <div className="flex justify-end">
-              <Button onClick={handleCreate} disabled={isCreating} size="sm">
-                {isCreating ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Plus className="mr-2 h-4 w-4" />
-                )}
-                Gerar novo link
-              </Button>
-            </div>
+            {links.length === 0 && (
+              <div className="flex justify-end">
+                <Button onClick={handleCreate} disabled={isCreating} size="sm">
+                  {isCreating ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Plus className="mr-2 h-4 w-4" />
+                  )}
+                  Gerar link
+                </Button>
+              </div>
+            )}
 
             {links.length === 0 ? (
               <p className="text-sm text-muted-foreground">Nenhum link gerado ainda.</p>
