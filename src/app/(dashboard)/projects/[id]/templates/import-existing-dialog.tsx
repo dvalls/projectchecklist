@@ -87,8 +87,8 @@ export function ImportExistingTemplateDialog({
         <div className="max-h-[420px] space-y-2 overflow-y-auto pr-1">
           {templates.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">
-              Nenhum template disponível na biblioteca. Salve um formulário existente
-              como template em qualquer projeto para reutilizá-lo.
+              Nenhum template disponível na biblioteca. Salve um formulário existente como
+              template em qualquer projeto para reutilizá-lo.
             </p>
           ) : filtered.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">

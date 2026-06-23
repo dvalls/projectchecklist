@@ -154,7 +154,7 @@ function SummaryContent({
       </div>
 
       {fields.length === 0 ? (
-        <p className="text-xs text-muted-foreground italic">
+        <p className="text-xs italic text-muted-foreground">
           Nenhum campo preenchido neste formulário.
         </p>
       ) : (

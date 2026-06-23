@@ -13,15 +13,23 @@ import type {
 import type { PublicFullReport, ReportTemplateEntry } from "../actions";
 import { formatDateTime, formatFieldValue } from "./format-value";
 
+const ACCENT = "#475569"; // slate-600 (barras/bordas)
+const ACCENT_DARK = "#1e293b"; // slate-800 (texto forte)
+const ACCENT_LIGHT = "#f1f5f9"; // slate-100 (fundos)
+
+// Dimensões da página (usadas para compensar padding no header fixo)
+const PAGE_PADDING_TOP = 46;
+const PAGE_PADDING_H = 36;
+
 const styles = StyleSheet.create({
   page: {
-    paddingTop: 36,
-    paddingBottom: 36,
-    paddingHorizontal: 36,
-    fontSize: 10,
+    paddingTop: PAGE_PADDING_TOP,
+    paddingBottom: 34,
+    paddingHorizontal: PAGE_PADDING_H,
+    fontSize: 9,
     fontFamily: "Helvetica",
     color: "#0f172a",
-    lineHeight: 1.4,
+    lineHeight: 1.2,
   },
   coverPage: {
     paddingTop: 48,
@@ -32,20 +40,22 @@ const styles = StyleSheet.create({
     color: "#0f172a",
   },
   coverHeader: {
-    borderBottom: "2pt solid #0f172a",
-    paddingBottom: 14,
+    borderBottom: "3pt solid " + ACCENT,
+    paddingBottom: 20,
     marginBottom: 20,
   },
   coverKicker: {
     fontSize: 9,
-    letterSpacing: 1.2,
+    letterSpacing: 1.5,
     textTransform: "uppercase",
     color: "#64748b",
+    marginTop: 14,
   },
   coverTitle: {
-    fontSize: 26,
+    fontSize: 28,
     marginTop: 6,
     fontFamily: "Helvetica-Bold",
+    color: "#0f172a",
   },
   coverDescription: {
     marginTop: 10,
@@ -53,17 +63,24 @@ const styles = StyleSheet.create({
     color: "#334155",
   },
   coverLogo: {
-    maxHeight: 44,
-    maxWidth: 180,
-    marginBottom: 16,
+    maxHeight: 22,
+    maxWidth: 90,
     objectFit: "contain",
+  },
+  coverLogoPlaceholder: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 13,
+    color: "#1e293b",
   },
   coverImage: {
     width: "100%",
-    height: 220,
-    marginTop: 18,
-    marginBottom: 18,
+    height: 200,
+    marginTop: 0,
+    marginBottom: 0,
     objectFit: "cover",
+  },
+  coverBody: {
+    paddingTop: 0,
   },
   sectionHeading: {
     fontSize: 9,
@@ -72,6 +89,7 @@ const styles = StyleSheet.create({
     color: "#64748b",
     fontFamily: "Helvetica-Bold",
     marginBottom: 6,
+    marginTop: 20,
   },
   designersGrid: {
     flexDirection: "row",
@@ -110,113 +128,158 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   disciplineChip: {
-    border: "1pt solid #e2e8f0",
+    backgroundColor: ACCENT_LIGHT,
     borderRadius: 3,
     paddingVertical: 4,
     paddingHorizontal: 8,
     fontSize: 9,
     marginRight: 6,
     marginBottom: 6,
+    color: ACCENT_DARK,
+    fontFamily: "Helvetica-Bold",
+  },
+  // Header fixo: margem negativa para sangrar além do padding da página
+  pageHeader: {
+    marginTop: -PAGE_PADDING_TOP,
+    marginLeft: -PAGE_PADDING_H,
+    marginRight: -PAGE_PADDING_H,
+    marginBottom: 22,
+    backgroundColor: "#000000",
+    paddingVertical: 6,
+    paddingHorizontal: PAGE_PADDING_H,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  pageHeaderText: {
+    fontSize: 7,
+    color: "#94a3b8",
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
   },
   templateBlock: {
-    marginBottom: 18,
+    marginBottom: 12,
   },
   templateHeader: {
-    borderBottom: "1pt solid #cbd5e1",
-    paddingBottom: 6,
+    borderBottom: "1.5pt solid " + ACCENT,
+    paddingBottom: 8,
     marginBottom: 10,
   },
   templateTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontFamily: "Helvetica-Bold",
+    lineHeight: 1.2,
   },
   templateMeta: {
-    fontSize: 9,
+    fontSize: 8,
     color: "#64748b",
-    marginTop: 2,
+    marginTop: 3,
   },
   submissionBlock: {
-    marginBottom: 14,
-    borderLeft: "2pt solid #0f172a",
-    paddingLeft: 10,
+    marginBottom: 10,
+    borderLeft: "2pt solid " + ACCENT,
+    paddingLeft: 8,
   },
   submissionHeader: {
-    backgroundColor: "#f1f5f9",
-    padding: 6,
-    marginBottom: 8,
+    backgroundColor: ACCENT_LIGHT,
+    borderRadius: 3,
+    paddingVertical: 5,
+    paddingHorizontal: 8,
+    marginBottom: 6,
   },
   submissionName: {
     fontFamily: "Helvetica-Bold",
-    fontSize: 11,
+    fontSize: 10,
+    color: ACCENT_DARK,
   },
   submissionMeta: {
-    color: "#475569",
-    fontSize: 9,
+    color: "#64748b",
+    fontSize: 8,
     marginTop: 1,
   },
   formSectionTitle: {
-    backgroundColor: "#0f172a",
-    color: "#f8fafc",
+    borderLeft: "3pt solid " + ACCENT,
+    backgroundColor: ACCENT_LIGHT,
+    color: "#1e293b",
     paddingVertical: 2,
-    paddingHorizontal: 5,
-    fontSize: 8,
-    letterSpacing: 1,
-    textTransform: "uppercase",
+    paddingHorizontal: 6,
+    fontSize: 9,
     fontFamily: "Helvetica-Bold",
     alignSelf: "flex-start",
-    marginBottom: 5,
-  },
-  fieldRow: {
-    flexDirection: "row",
-    border: "1pt solid #e2e8f0",
-    borderRadius: 3,
-    paddingVertical: 6,
-    paddingHorizontal: 8,
     marginBottom: 4,
   },
+  // Dois campos por coluna — label mais estreito
+  fieldRow: {
+    flexDirection: "row",
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    borderBottom: "0.5pt solid #f1f5f9",
+  },
+  fieldRowStacked: {
+    flexDirection: "column",
+  },
+  fieldRowAlt: {
+    backgroundColor: "#f8fafc",
+  },
   fieldLabel: {
-    width: 140,
     fontSize: 8,
-    letterSpacing: 0.5,
-    textTransform: "uppercase",
     color: "#64748b",
     fontFamily: "Helvetica-Bold",
-    paddingRight: 8,
+    paddingRight: 6,
+    lineHeight: 1.1,
+  },
+  fieldLabelStacked: {
+    width: "100%",
+    paddingRight: 0,
+    marginBottom: 1,
   },
   fieldValue: {
-    flex: 1,
-    fontSize: 10,
+    fontSize: 8,
+    lineHeight: 1.1,
   },
   matrixBlock: {
     border: "1pt solid #e2e8f0",
     borderRadius: 3,
-    padding: 8,
-    marginBottom: 6,
+    paddingVertical: 5,
+    paddingHorizontal: 6,
+    marginBottom: 4,
   },
   matrixFieldLabel: {
     fontFamily: "Helvetica-Bold",
-    fontSize: 10,
-    marginBottom: 4,
+    fontSize: 9,
+    marginBottom: 3,
   },
   matrixRow: {
     flexDirection: "row",
-    marginBottom: 2,
+    marginBottom: 1,
+    lineHeight: 1,
   },
   matrixEnv: {
-    width: 90,
-    textTransform: "uppercase",
+    width: "75%",
     fontSize: 8,
     color: "#64748b",
     fontFamily: "Helvetica-Bold",
+    paddingRight: 4,
+    lineHeight: 1,
   },
   matrixValue: {
-    flex: 1,
-    fontSize: 9,
+    width: "25%",
+    fontSize: 8,
+    lineHeight: 1,
+  },
+  matrixEnvStacked: {
+    width: "100%",
+    paddingRight: 0,
+  },
+  matrixValueStacked: {
+    width: "100%",
+    fontSize: 8,
+    lineHeight: 1,
   },
   answerImage: {
     marginTop: 6,
-    maxHeight: 140,
-    maxWidth: 260,
+    maxHeight: 120,
+    maxWidth: 200,
     objectFit: "contain",
   },
   imageTag: {
@@ -247,6 +310,62 @@ function buildImageUrl(baseUrl: string, path: string | null): string | null {
   if (!path) return null;
   if (/^https?:\/\//i.test(path)) return path;
   return `${baseUrl}/${path}`;
+}
+
+// A fonte Helvetica do PDF não renderiza emojis (ex.: o ⚡ vira "¡").
+// Removemos pictogramas/emojis do texto exibido no PDF.
+function stripEmoji(text: string): string {
+  return text
+    .replace(/[\p{Extended_Pictographic}\u{FE0F}\u{200D}]/gu, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+// Tipos de texto livre: resposta vai abaixo da pergunta, ocupando 100%.
+// Demais (checkbox, select, radio, date, number...): pergunta 75% / resposta 25%.
+const STACKED_FIELD_TYPES = new Set<ClFormField["type"]>(["text", "textarea"]);
+
+function FieldRow({
+  field,
+  formattedValue,
+  imgUrl,
+  isAlt,
+}: {
+  field: ClFormField;
+  formattedValue: string;
+  imgUrl: string | null;
+  isAlt: boolean;
+}) {
+  const isStacked = STACKED_FIELD_TYPES.has(field.type);
+
+  if (isStacked) {
+    return (
+      <View
+        wrap={false}
+        style={[styles.fieldRow, styles.fieldRowStacked, isAlt ? styles.fieldRowAlt : {}]}
+      >
+        <Text style={[styles.fieldLabel, styles.fieldLabelStacked]}>{field.label}</Text>
+        <Text style={styles.fieldValue}>{formattedValue}</Text>
+        {imgUrl ? (
+          // eslint-disable-next-line jsx-a11y/alt-text
+          <Image src={imgUrl} style={styles.answerImage} />
+        ) : null}
+      </View>
+    );
+  }
+
+  return (
+    <View wrap={false} style={[styles.fieldRow, isAlt ? styles.fieldRowAlt : {}]}>
+      <Text style={[styles.fieldLabel, { width: "75%" }]}>{field.label}</Text>
+      <View style={{ width: "25%" }}>
+        <Text style={styles.fieldValue}>{formattedValue}</Text>
+        {imgUrl ? (
+          // eslint-disable-next-line jsx-a11y/alt-text
+          <Image src={imgUrl} style={styles.answerImage} />
+        ) : null}
+      </View>
+    </View>
+  );
 }
 
 function SectionedFields({
@@ -300,61 +419,126 @@ function SectionedFields({
 
   return (
     <View>
-      {renderedSections.map(({ section, visible }) => (
-        <View key={section.id} wrap={false} style={{ marginBottom: 6 }}>
-          {section.title ? (
-            <Text style={styles.formSectionTitle}>{section.title}</Text>
-          ) : null}
-          {visible.map((field) => {
-            if (isMatrix) {
-              return (
-                <View key={field.id} style={styles.matrixBlock} wrap={false}>
-                  <Text style={styles.matrixFieldLabel}>{field.label}</Text>
-                  {environments.map((env) => {
-                    const v = matrixByKey.get(`${field.id}::${env}`);
-                    const imgUrl = buildImageUrl(publicBaseUrl, v?.image_url ?? null);
-                    return (
-                      <View key={env} style={{ marginBottom: 2 }}>
-                        <View style={styles.matrixRow}>
-                          <Text style={styles.matrixEnv}>{env}</Text>
-                          <Text style={styles.matrixValue}>
-                            {formatFieldValue(field, v?.value ?? null)}
-                          </Text>
+      {renderedSections.map(({ section, visible }) => {
+        if (isMatrix) {
+          return (
+            <View key={section.id} style={{ marginBottom: 6 }}>
+              {section.title ? (
+                <Text style={styles.formSectionTitle}>{section.title}</Text>
+              ) : null}
+              {visible.map((field) => {
+                const perCol = Math.ceil(environments.length / 3);
+                const envCols = [
+                  environments.slice(0, perCol),
+                  environments.slice(perCol, perCol * 2),
+                  environments.slice(perCol * 2),
+                ];
+                const isStacked = STACKED_FIELD_TYPES.has(field.type);
+                return (
+                  <View key={field.id} style={styles.matrixBlock} wrap={false}>
+                    <Text style={styles.matrixFieldLabel}>{field.label}</Text>
+                    <View style={{ flexDirection: "row" }}>
+                      {envCols.map((envCol, ci) => (
+                        <View key={ci} style={{ flex: 1, marginRight: ci < 2 ? 6 : 0 }}>
+                          {envCol.map((env) => {
+                            const v = matrixByKey.get(`${field.id}::${env}`);
+                            const imgUrl = buildImageUrl(
+                              publicBaseUrl,
+                              v?.image_url ?? null,
+                            );
+                            const formatted = formatFieldValue(field, v?.value ?? null);
+                            return (
+                              <View key={env} style={{ marginBottom: 2 }}>
+                                <View
+                                  style={[
+                                    styles.matrixRow,
+                                    isStacked ? { flexDirection: "column" } : {},
+                                  ]}
+                                >
+                                  <Text
+                                    style={[
+                                      styles.matrixEnv,
+                                      isStacked ? styles.matrixEnvStacked : {},
+                                    ]}
+                                  >
+                                    {env}
+                                  </Text>
+                                  <Text
+                                    style={
+                                      isStacked
+                                        ? styles.matrixValueStacked
+                                        : styles.matrixValue
+                                    }
+                                  >
+                                    {formatted}
+                                  </Text>
+                                </View>
+                                {imgUrl ? (
+                                  // eslint-disable-next-line jsx-a11y/alt-text
+                                  <Image src={imgUrl} style={styles.answerImage} />
+                                ) : null}
+                              </View>
+                            );
+                          })}
                         </View>
-                        {imgUrl ? (
-                          // eslint-disable-next-line jsx-a11y/alt-text
-                          <Image src={imgUrl} style={styles.answerImage} />
-                        ) : null}
-                      </View>
-                    );
-                  })}
-                </View>
-              );
-            }
-
-            const v = valuesByField.get(field.id);
-            const imgUrl = buildImageUrl(publicBaseUrl, v?.image_url ?? null);
-            return (
-              <View key={field.id} wrap={false} style={{ marginBottom: 4 }}>
-                <View style={styles.fieldRow}>
-                  <Text style={styles.fieldLabel}>{field.label}</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.fieldValue}>
-                      {formatFieldValue(field, v?.value ?? null)}
-                    </Text>
-                    {imgUrl ? (
-                      <>
-                        {/* eslint-disable-next-line jsx-a11y/alt-text */}
-                        <Image src={imgUrl} style={styles.answerImage} />
-                      </>
-                    ) : null}
+                      ))}
+                    </View>
                   </View>
-                </View>
+                );
+              })}
+            </View>
+          );
+        }
+
+        // Layout de duas colunas para campos normais
+        const half = Math.ceil(visible.length / 2);
+        const col1 = visible.slice(0, half);
+        const col2 = visible.slice(half);
+
+        return (
+          <View key={section.id} style={{ marginBottom: 8 }}>
+            {section.title ? (
+              <Text style={styles.formSectionTitle}>{section.title}</Text>
+            ) : null}
+            <View style={{ flexDirection: "row" }}>
+              <View style={{ flex: 1, marginRight: 4 }}>
+                {col1.map((field, idx) => (
+                  <FieldRow
+                    key={field.id}
+                    field={field}
+                    formattedValue={formatFieldValue(
+                      field,
+                      valuesByField.get(field.id)?.value ?? null,
+                    )}
+                    imgUrl={buildImageUrl(
+                      publicBaseUrl,
+                      valuesByField.get(field.id)?.image_url ?? null,
+                    )}
+                    isAlt={idx % 2 === 1}
+                  />
+                ))}
               </View>
-            );
-          })}
-        </View>
-      ))}
+              <View style={{ flex: 1, marginLeft: 4 }}>
+                {col2.map((field, idx) => (
+                  <FieldRow
+                    key={field.id}
+                    field={field}
+                    formattedValue={formatFieldValue(
+                      field,
+                      valuesByField.get(field.id)?.value ?? null,
+                    )}
+                    imgUrl={buildImageUrl(
+                      publicBaseUrl,
+                      valuesByField.get(field.id)?.image_url ?? null,
+                    )}
+                    isAlt={idx % 2 === 1}
+                  />
+                ))}
+              </View>
+            </View>
+          </View>
+        );
+      })}
     </View>
   );
 }
@@ -371,12 +555,10 @@ function Cover({ data }: { data: PublicFullReport }) {
           // eslint-disable-next-line jsx-a11y/alt-text
           <Image src={logoUrl} style={styles.coverLogo} />
         ) : office?.office_name ? (
-          <Text style={{ fontFamily: "Helvetica-Bold", fontSize: 12 }}>
-            {office.office_name}
-          </Text>
+          <Text style={styles.coverLogoPlaceholder}>{office.office_name}</Text>
         ) : null}
         <Text style={styles.coverKicker}>Checklist do projeto</Text>
-        <Text style={styles.coverTitle}>{project.name}</Text>
+        <Text style={styles.coverTitle}>{stripEmoji(project.name)}</Text>
         {project.description ? (
           <Text style={styles.coverDescription}>{project.description}</Text>
         ) : null}
@@ -387,53 +569,57 @@ function Cover({ data }: { data: PublicFullReport }) {
         <Image src={coverUrl} style={styles.coverImage} />
       ) : null}
 
-      {designers.length > 0 ? (
-        <View style={{ marginTop: 8 }}>
-          <Text style={styles.sectionHeading}>Projetistas</Text>
-          <View style={styles.designersGrid}>
-            {designers.map((d) => {
-              const photo = buildImageUrl(publicBaseUrl, d.photo_url);
-              return (
-                <View key={d.id} style={styles.designerCard}>
-                  <View style={styles.designerInner}>
-                    {photo ? (
-                      // eslint-disable-next-line jsx-a11y/alt-text
-                      <Image src={photo} style={styles.designerPhoto} />
-                    ) : (
-                      <View
-                        style={{
-                          width: 32,
-                          height: 32,
-                          borderRadius: 16,
-                          marginRight: 8,
-                          backgroundColor: "#e2e8f0",
-                        }}
-                      />
-                    )}
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.designerName}>{d.name}</Text>
-                      {d.role ? <Text style={styles.designerRole}>{d.role}</Text> : null}
+      <View style={styles.coverBody}>
+        {designers.length > 0 ? (
+          <View>
+            <Text style={styles.sectionHeading}>Projetistas</Text>
+            <View style={styles.designersGrid}>
+              {designers.map((d) => {
+                const photo = buildImageUrl(publicBaseUrl, d.photo_url);
+                return (
+                  <View key={d.id} style={styles.designerCard}>
+                    <View style={styles.designerInner}>
+                      {photo ? (
+                        // eslint-disable-next-line jsx-a11y/alt-text
+                        <Image src={photo} style={styles.designerPhoto} />
+                      ) : (
+                        <View
+                          style={{
+                            width: 32,
+                            height: 32,
+                            borderRadius: 16,
+                            marginRight: 8,
+                            backgroundColor: "#e2e8f0",
+                          }}
+                        />
+                      )}
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.designerName}>{d.name}</Text>
+                        {d.role ? (
+                          <Text style={styles.designerRole}>{d.role}</Text>
+                        ) : null}
+                      </View>
                     </View>
                   </View>
-                </View>
-              );
-            })}
+                );
+              })}
+            </View>
           </View>
-        </View>
-      ) : null}
+        ) : null}
 
-      {disciplines.length > 0 ? (
-        <View style={{ marginTop: 14 }}>
-          <Text style={styles.sectionHeading}>Disciplinas</Text>
-          <View style={styles.disciplinesRow}>
-            {disciplines.map((d) => (
-              <Text key={d.id} style={styles.disciplineChip}>
-                {d.name}
-              </Text>
-            ))}
+        {disciplines.length > 0 ? (
+          <View>
+            <Text style={styles.sectionHeading}>Disciplinas</Text>
+            <View style={styles.disciplinesRow}>
+              {disciplines.map((d) => (
+                <Text key={d.id} style={styles.disciplineChip}>
+                  {d.name}
+                </Text>
+              ))}
+            </View>
           </View>
-        </View>
-      ) : null}
+        ) : null}
+      </View>
 
       <Text
         style={styles.footer}
@@ -494,9 +680,15 @@ export function ReportDocument({ data }: { data: PublicFullReport }) {
       {hasContent ? (
         data.templates.map((entry) => (
           <Page key={entry.template.id} size="A4" style={styles.page}>
+            <View style={styles.pageHeader} fixed>
+              <Text style={styles.pageHeaderText}>{stripEmoji(data.project.name)}</Text>
+              <Text style={styles.pageHeaderText}>Checklist</Text>
+            </View>
             <View style={styles.templateBlock}>
               <View style={styles.templateHeader}>
-                <Text style={styles.templateTitle}>{entry.template.name}</Text>
+                <Text style={styles.templateTitle}>
+                  {stripEmoji(entry.template.name)}
+                </Text>
                 {entry.template.description ? (
                   <Text style={styles.templateMeta}>{entry.template.description}</Text>
                 ) : null}
@@ -521,7 +713,7 @@ export function ReportDocument({ data }: { data: PublicFullReport }) {
             <Text
               style={styles.footer}
               render={({ pageNumber, totalPages }) =>
-                `${data.project.name}  ·  página ${pageNumber} de ${totalPages}`
+                `${stripEmoji(data.project.name)}  ·  página ${pageNumber} de ${totalPages}`
               }
               fixed
             />
@@ -529,6 +721,10 @@ export function ReportDocument({ data }: { data: PublicFullReport }) {
         ))
       ) : (
         <Page size="A4" style={styles.page}>
+          <View style={styles.pageHeader} fixed>
+            <Text style={styles.pageHeaderText}>{stripEmoji(data.project.name)}</Text>
+            <Text style={styles.pageHeaderText}>Checklist</Text>
+          </View>
           <Text style={styles.emptyState}>
             Nenhum preenchimento registrado neste link.
           </Text>

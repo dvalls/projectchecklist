@@ -29,8 +29,7 @@ function InfoFieldView({ field }: { field: ClFormField }) {
   const opts = (field.options as Exclude<FieldOptions, null>) ?? {};
   const content = opts.content ?? field.help_text ?? "";
   const lines = content.split("\n").filter((l) => l.trim().length > 0);
-  const isAllBullets =
-    lines.length > 0 && lines.every((l) => l.trim().startsWith("- "));
+  const isAllBullets = lines.length > 0 && lines.every((l) => l.trim().startsWith("- "));
 
   return (
     <div className="rounded-md border border-dashed bg-muted/20 p-3">
@@ -58,11 +57,13 @@ export function FieldInputControl({
   field,
   value,
   compact,
+  radioGroupName,
   onChange,
 }: {
   field: ClFormField;
   value: FieldValue | undefined;
   compact?: boolean;
+  radioGroupName?: string;
   onChange: (patch: Partial<FieldValue>) => void;
 }) {
   const opts = (field.options as Exclude<FieldOptions, null>) ?? {};
@@ -85,9 +86,7 @@ export function FieldInputControl({
 
   const showLabel = !compact && field.type !== "checkbox";
   const groupValue =
-    field.type === "checkbox_group"
-      ? parseCheckboxGroup(value?.value ?? null)
-      : null;
+    field.type === "checkbox_group" ? parseCheckboxGroup(value?.value ?? null) : null;
 
   function updateGroup(next: CheckboxGroupValue) {
     onChange({ value: serializeCheckboxGroup(next) });
@@ -113,26 +112,26 @@ export function FieldInputControl({
     const inputEl =
       field.type === "text" ? (
         <Input
-          className="flex-1 min-w-0"
+          className="min-w-0 flex-1"
           value={value?.value ?? ""}
           onChange={(e) => onChange({ value: e.target.value })}
         />
       ) : field.type === "number" ? (
         <Input
           type="number"
-          className="flex-1 min-w-0"
+          className="min-w-0 flex-1"
           value={value?.value ?? ""}
           onChange={(e) => onChange({ value: e.target.value })}
         />
       ) : field.type === "date" ? (
         <Input
           type="date"
-          className="flex-1 min-w-0"
+          className="min-w-0 flex-1"
           value={value?.value ?? ""}
           onChange={(e) => onChange({ value: e.target.value })}
         />
       ) : (
-        <div className="flex-1 min-w-0">
+        <div className="min-w-0 flex-1">
           <Select
             value={value?.value ?? ""}
             onValueChange={(v) => onChange({ value: v })}
@@ -276,9 +275,7 @@ export function FieldInputControl({
             {opts.recommended_value ? <RecommendedBadge /> : null}
           </label>
           {!compact && field.help_text ? (
-            <p className="pl-6 text-xs italic text-muted-foreground">
-              {field.help_text}
-            </p>
+            <p className="pl-6 text-xs italic text-muted-foreground">{field.help_text}</p>
           ) : null}
           {opts.recommended_value && !compact ? (
             <p className="pl-6 text-[11px] text-warning-foreground">
@@ -335,9 +332,7 @@ export function FieldInputControl({
                 className="h-8 flex-1"
                 value={groupValue.other ?? ""}
                 disabled={groupValue.other === undefined}
-                onChange={(e) =>
-                  updateGroup({ ...groupValue, other: e.target.value })
-                }
+                onChange={(e) => updateGroup({ ...groupValue, other: e.target.value })}
               />
             </div>
           ) : null}
@@ -411,7 +406,7 @@ export function FieldInputControl({
                   >
                     <input
                       type="radio"
-                      name={field.id}
+                      name={radioGroupName ?? field.id}
                       checked={value?.value === c.value}
                       onChange={() => onChange({ value: c.value })}
                       className="mt-0.5 shrink-0"
@@ -441,7 +436,7 @@ export function FieldInputControl({
                     <label className="flex cursor-pointer items-center gap-2">
                       <input
                         type="radio"
-                        name={field.id}
+                        name={radioGroupName ?? field.id}
                         checked={isOtherSelected}
                         onChange={() =>
                           onChange({

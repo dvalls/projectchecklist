@@ -138,8 +138,8 @@ export function StepForms({
       <div>
         <h2 className="text-lg font-semibold">Formulários iniciais</h2>
         <p className="text-sm text-muted-foreground">
-          Adicione formulários ao projeto importando da biblioteca de templates ou
-          criando novos em branco. Você pode pular e configurar depois.
+          Adicione formulários ao projeto importando da biblioteca de templates ou criando
+          novos em branco. Você pode pular e configurar depois.
         </p>
       </div>
 

@@ -238,9 +238,7 @@ function DeleteUserButton({ user, disabled }: { user: UserRow; disabled: boolean
 }
 
 function EditRoleDialog({ user, onClose }: { user: UserRow; onClose: () => void }) {
-  const [role, setRole] = useState<UserRole>(
-    user.role === "admin" ? "admin" : "member",
-  );
+  const [role, setRole] = useState<UserRole>(user.role === "admin" ? "admin" : "member");
   const [isPending, startTransition] = useTransition();
 
   function handleSave() {
@@ -440,9 +438,7 @@ function NewUserDialog({ onClose }: { onClose: () => void }) {
             Cancelar
           </Button>
           <Button onClick={handleSave} disabled={isPending || !email.trim()}>
-            {isPending ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : null}
+            {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             {mode === "create" ? "Criar usuário" : "Enviar convite"}
           </Button>
         </DialogFooter>
@@ -479,10 +475,16 @@ function ChangePasswordDialog({
       if (isSelf) {
         const supabase = createClient();
         const { error } = await supabase.auth.updateUser({ password: newPassword });
-        if (error) { toast.error(error.message); return; }
+        if (error) {
+          toast.error(error.message);
+          return;
+        }
       } else {
         const res = await changeUserPassword(user.id, newPassword);
-        if (res.error) { toast.error(res.error); return; }
+        if (res.error) {
+          toast.error(res.error);
+          return;
+        }
       }
       toast.success("Senha alterada com sucesso.");
       onClose();
@@ -523,7 +525,11 @@ function ChangePasswordDialog({
                 onClick={() => setShowPassword((v) => !v)}
                 tabIndex={-1}
               >
-                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
               </button>
             </div>
           </div>

@@ -162,7 +162,10 @@ export function TemplateCard({
           </Card>
         </Link>
 
-        <div className="absolute right-2 top-2 flex items-center gap-1" onClick={(e) => e.preventDefault()}>
+        <div
+          className="absolute right-2 top-2 flex items-center gap-1"
+          onClick={(e) => e.preventDefault()}
+        >
           <Button
             variant="ghost"
             size="sm"

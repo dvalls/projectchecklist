@@ -61,7 +61,9 @@ export default async function TemplatesPage({
         <EmptyState
           className="mt-6"
           icon={<FileText className="h-6 w-6" />}
-          title={activeDisciplineId ? "Nenhum template nesta disciplina" : "Nenhum template"}
+          title={
+            activeDisciplineId ? "Nenhum template nesta disciplina" : "Nenhum template"
+          }
           description={
             activeDisciplineId
               ? 'Tente selecionar outra disciplina ou clique em "Todos".'

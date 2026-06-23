@@ -430,9 +430,7 @@ export function TemplateBuilder({
       } else {
         toast.success("Formulário apagado.");
         router.push(
-          template.project_id
-            ? `/projects/${template.project_id}`
-            : "/settings/forms",
+          template.project_id ? `/projects/${template.project_id}` : "/settings/forms",
         );
       }
     });

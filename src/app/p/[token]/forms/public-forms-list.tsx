@@ -324,9 +324,9 @@ export function PublicFormsList({
         {isProjectOwner ? (
           <div className="flex flex-col gap-3 rounded-md border border-dashed bg-muted/30 p-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
             <p>
-              Visualizando como dono do projeto. As contagens de
-              &quot;respondidas&quot; podem incluir rascunhos salvos neste navegador,
-              mesmo após excluir os envios do servidor.
+              Visualizando como dono do projeto. As contagens de &quot;respondidas&quot;
+              podem incluir rascunhos salvos neste navegador, mesmo após excluir os envios
+              do servidor.
             </p>
             <Button
               type="button"

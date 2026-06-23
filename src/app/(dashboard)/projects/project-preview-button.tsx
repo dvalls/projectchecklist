@@ -5,15 +5,15 @@ import Image from "next/image";
 import { ArrowLeft, Eye, FileText, ImageIcon, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FieldPreview } from "@/components/form-builder/field-preview";
 import { createClient } from "@/lib/supabase/client";
-import type { ClDiscipline, ClFormField, ClFormSection, ClFormTemplate } from "@/lib/supabase/types";
+import type {
+  ClDiscipline,
+  ClFormField,
+  ClFormSection,
+  ClFormTemplate,
+} from "@/lib/supabase/types";
 
 interface ProjectPreviewButtonProps {
   projectId: string;
@@ -112,10 +112,7 @@ export function ProjectPreviewButton({
           </DialogHeader>
 
           {detail ? (
-            <TemplateFormPreview
-              sections={detail.sections}
-              fields={detail.fields}
-            />
+            <TemplateFormPreview sections={detail.sections} fields={detail.fields} />
           ) : (
             <ProjectOverview
               projectName={projectName}
@@ -182,11 +179,15 @@ function ProjectOverview({
           Formulários ({templates.length})
         </p>
         {templates.length === 0 ? (
-          <p className="text-xs text-muted-foreground">Nenhum formulário neste projeto.</p>
+          <p className="text-xs text-muted-foreground">
+            Nenhum formulário neste projeto.
+          </p>
         ) : (
           <ul className="space-y-1">
             {templates.map((t) => {
-              const discipline = t.discipline_id ? disciplineMap.get(t.discipline_id) : null;
+              const discipline = t.discipline_id
+                ? disciplineMap.get(t.discipline_id)
+                : null;
               return (
                 <li key={t.id}>
                   <button
@@ -234,7 +235,12 @@ function TemplateFormPreview({
     fieldsBySection.set(key, list);
   }
 
-  const effectiveSections: { id: string | null; title: string; subtitle: string | null; columns: number }[] =
+  const effectiveSections: {
+    id: string | null;
+    title: string;
+    subtitle: string | null;
+    columns: number;
+  }[] =
     sections.length > 0
       ? sections
       : [{ id: null, title: "Campos", subtitle: null, columns: 1 }];

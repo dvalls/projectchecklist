@@ -52,7 +52,11 @@ function buildGroups(
   return groups;
 }
 
-export function TemplatesPanel({ projectId, initialTemplates, initialDisciplines }: Props) {
+export function TemplatesPanel({
+  projectId,
+  initialTemplates,
+  initialDisciplines,
+}: Props) {
   const [disciplines, setDisciplines] = useState(initialDisciplines);
   const [templates, setTemplates] = useState(initialTemplates);
   const [isPending, startTransition] = useTransition();
@@ -123,8 +127,7 @@ export function TemplatesPanel({ projectId, initialTemplates, initialDisciplines
     <div className="space-y-5">
       {groups.map((group, groupIndex) => {
         const canUp = groupIndex > 0 && group.discipline !== null;
-        const canDown =
-          groupIndex < groups.length - 1 && group.discipline !== null;
+        const canDown = groupIndex < groups.length - 1 && group.discipline !== null;
 
         return (
           <div key={group.discipline?.id ?? "no-discipline"}>

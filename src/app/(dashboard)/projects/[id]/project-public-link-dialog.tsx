@@ -148,133 +148,133 @@ export function ProjectPublicLinkDialog({ projectId, initialLinks, templates }: 
         </Button>
       ) : null}
       <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          <Send className="mr-2 h-4 w-4" />
-          Enviar checklist
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Enviar checklist ao cliente</DialogTitle>
-          <DialogDescription>
-            Gere um link e envie para o cliente preencher os checklists deste projeto.
-          </DialogDescription>
-        </DialogHeader>
+        <DialogTrigger asChild>
+          <Button variant="outline" size="sm">
+            <Send className="mr-2 h-4 w-4" />
+            Enviar checklist
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Enviar checklist ao cliente</DialogTitle>
+            <DialogDescription>
+              Gere um link e envie para o cliente preencher os checklists deste projeto.
+            </DialogDescription>
+          </DialogHeader>
 
-        <div className="space-y-6">
-          <div className="flex justify-end">
-            <Button onClick={handleCreate} disabled={isCreating} size="sm">
-              {isCreating ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Plus className="mr-2 h-4 w-4" />
-              )}
-              Gerar novo link
-            </Button>
-          </div>
-
-          {links.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhum link gerado ainda.</p>
-          ) : (
-            <div className="space-y-3">
-              {links.map((link) => {
-                const url = buildUrl(link.token);
-                return (
-                  <div
-                    key={link.id}
-                    className="flex flex-col gap-2 rounded-md border p-3"
-                  >
-                    <Input
-                      readOnly
-                      value={url}
-                      className="h-9 font-mono text-xs"
-                      onFocus={(e) => e.currentTarget.select()}
-                    />
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleCopy(link.token)}
-                      >
-                        <Copy className="mr-1 h-3.5 w-3.5" />
-                        Copiar
-                      </Button>
-                      <Button variant="outline" size="sm" asChild>
-                        <a href={url} target="_blank" rel="noopener noreferrer">
-                          <ExternalLink className="mr-1 h-3.5 w-3.5" />
-                          Abrir
-                        </a>
-                      </Button>
-                      <div className="ml-auto flex items-center gap-1.5 px-2">
-                        <Switch
-                          checked={link.is_active}
-                          onCheckedChange={(v) => handleToggle(link, v)}
-                        />
-                        <span className="text-xs text-muted-foreground">
-                          {link.is_active ? "Ativo" : "Inativo"}
-                        </span>
-                      </div>
-                      <ConfirmDialog
-                        destructive
-                        title="Remover este link?"
-                        description="Os clientes que ainda tiverem este link não conseguirão mais acessar."
-                        confirmLabel="Remover"
-                        onConfirm={() => handleDelete(link)}
-                        trigger={
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                            aria-label="Remover link"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        }
-                      />
-                    </div>
-                  </div>
-                );
-              })}
+          <div className="space-y-6">
+            <div className="flex justify-end">
+              <Button onClick={handleCreate} disabled={isCreating} size="sm">
+                {isCreating ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Plus className="mr-2 h-4 w-4" />
+                )}
+                Gerar novo link
+              </Button>
             </div>
-          )}
 
-          <div>
-            <h3 className="mb-2 text-sm font-semibold">Formulários visíveis no link</h3>
-            <p className="mb-3 text-xs text-muted-foreground">
-              Desmarque para ocultar um formulário do link de envio.
-            </p>
-            {templatesState.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                Nenhum formulário neste projeto.
-              </p>
+            {links.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nenhum link gerado ainda.</p>
             ) : (
-              <div className="max-h-64 space-y-1.5 overflow-y-auto">
-                {templatesState.map((t) => (
-                  <div
-                    key={t.id}
-                    className="flex items-center justify-between rounded-md border p-2.5 text-sm"
-                  >
-                    <div className="flex items-center gap-2">
-                      {t.is_public ? (
-                        <Eye className="h-4 w-4 text-muted-foreground" />
-                      ) : (
-                        <EyeOff className="h-4 w-4 text-muted-foreground" />
-                      )}
-                      <span>{t.name}</span>
+              <div className="space-y-3">
+                {links.map((link) => {
+                  const url = buildUrl(link.token);
+                  return (
+                    <div
+                      key={link.id}
+                      className="flex flex-col gap-2 rounded-md border p-3"
+                    >
+                      <Input
+                        readOnly
+                        value={url}
+                        className="h-9 font-mono text-xs"
+                        onFocus={(e) => e.currentTarget.select()}
+                      />
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleCopy(link.token)}
+                        >
+                          <Copy className="mr-1 h-3.5 w-3.5" />
+                          Copiar
+                        </Button>
+                        <Button variant="outline" size="sm" asChild>
+                          <a href={url} target="_blank" rel="noopener noreferrer">
+                            <ExternalLink className="mr-1 h-3.5 w-3.5" />
+                            Abrir
+                          </a>
+                        </Button>
+                        <div className="ml-auto flex items-center gap-1.5 px-2">
+                          <Switch
+                            checked={link.is_active}
+                            onCheckedChange={(v) => handleToggle(link, v)}
+                          />
+                          <span className="text-xs text-muted-foreground">
+                            {link.is_active ? "Ativo" : "Inativo"}
+                          </span>
+                        </div>
+                        <ConfirmDialog
+                          destructive
+                          title="Remover este link?"
+                          description="Os clientes que ainda tiverem este link não conseguirão mais acessar."
+                          confirmLabel="Remover"
+                          onConfirm={() => handleDelete(link)}
+                          trigger={
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                              aria-label="Remover link"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          }
+                        />
+                      </div>
                     </div>
-                    <Switch
-                      checked={t.is_public}
-                      onCheckedChange={(v) => handleTemplateToggle(t.id, v)}
-                    />
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
+
+            <div>
+              <h3 className="mb-2 text-sm font-semibold">Formulários visíveis no link</h3>
+              <p className="mb-3 text-xs text-muted-foreground">
+                Desmarque para ocultar um formulário do link de envio.
+              </p>
+              {templatesState.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  Nenhum formulário neste projeto.
+                </p>
+              ) : (
+                <div className="max-h-64 space-y-1.5 overflow-y-auto">
+                  {templatesState.map((t) => (
+                    <div
+                      key={t.id}
+                      className="flex items-center justify-between rounded-md border p-2.5 text-sm"
+                    >
+                      <div className="flex items-center gap-2">
+                        {t.is_public ? (
+                          <Eye className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <EyeOff className="h-4 w-4 text-muted-foreground" />
+                        )}
+                        <span>{t.name}</span>
+                      </div>
+                      <Switch
+                        checked={t.is_public}
+                        onCheckedChange={(v) => handleTemplateToggle(t.id, v)}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

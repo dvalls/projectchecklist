@@ -11,7 +11,11 @@ import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/layout/empty-state";
 import { PageHeader } from "@/components/layout/page-header";
 
-import type { ClDiscipline, ClFormSubmission, ClFormTemplate } from "@/lib/supabase/types";
+import type {
+  ClDiscipline,
+  ClFormSubmission,
+  ClFormTemplate,
+} from "@/lib/supabase/types";
 
 import { ProjectCardMenu } from "./project-card-menu";
 import { ProjectPreviewButton } from "./project-preview-button";
@@ -30,20 +34,21 @@ export default async function ProjectsPage() {
 
   const projectIds = (projects ?? []).map((p) => p.id);
 
-  const [{ data: publicSubmissions }, { data: templates }, { data: disciplines }] = await Promise.all([
-    projectIds.length > 0
-      ? supabase
-          .from("cl_form_submissions")
-          .select("*")
-          .in("project_id", projectIds)
-          .not("public_link_id", "is", null)
-          .order("created_at", { ascending: false })
-      : Promise.resolve({ data: [] as ClFormSubmission[] }),
-    projectIds.length > 0
-      ? supabase.from("cl_form_templates").select("*").in("project_id", projectIds)
-      : Promise.resolve({ data: [] as ClFormTemplate[] }),
-    supabase.from("cl_disciplines").select("*").order("position"),
-  ]);
+  const [{ data: publicSubmissions }, { data: templates }, { data: disciplines }] =
+    await Promise.all([
+      projectIds.length > 0
+        ? supabase
+            .from("cl_form_submissions")
+            .select("*")
+            .in("project_id", projectIds)
+            .not("public_link_id", "is", null)
+            .order("created_at", { ascending: false })
+        : Promise.resolve({ data: [] as ClFormSubmission[] }),
+      projectIds.length > 0
+        ? supabase.from("cl_form_templates").select("*").in("project_id", projectIds)
+        : Promise.resolve({ data: [] as ClFormTemplate[] }),
+      supabase.from("cl_disciplines").select("*").order("position"),
+    ]);
 
   const submissionsByProject = new Map<string, ClFormSubmission[]>();
   for (const s of (publicSubmissions ?? []) as ClFormSubmission[]) {

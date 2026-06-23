@@ -111,9 +111,8 @@ export function PublicCover({
   const [open, setOpen] = useState(false);
   const [clientName, setClientName] = useState("");
   const [clientEmail, setClientEmail] = useState("");
-  const [confirmDeleteSession, setConfirmDeleteSession] = useState<SubmissionSession | null>(
-    null,
-  );
+  const [confirmDeleteSession, setConfirmDeleteSession] =
+    useState<SubmissionSession | null>(null);
   const [isDeleting, startDeleting] = useTransition();
 
   useEffect(() => {
@@ -249,9 +248,7 @@ export function PublicCover({
                       <div className="min-w-0">
                         <div className="font-medium">{d.name}</div>
                         {d.role ? (
-                          <div className="text-xs text-muted-foreground">
-                            {d.role}
-                          </div>
+                          <div className="text-xs text-muted-foreground">{d.role}</div>
                         ) : null}
                         {d.formation ? (
                           <div className="text-xs text-muted-foreground/70">

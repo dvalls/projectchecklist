@@ -168,7 +168,9 @@ export interface PublicSubmissionSummary {
 export async function getPublicSessionSummary(
   token: string,
   submissionIds: string[],
-): Promise<{ data: PublicSubmissionSummary[]; error?: never } | { data?: never; error: string }> {
+): Promise<
+  { data: PublicSubmissionSummary[]; error?: never } | { data?: never; error: string }
+> {
   if (submissionIds.length === 0) return { data: [] };
 
   const supabase = createServiceRoleClient();
@@ -616,28 +618,25 @@ export async function getPublicFullReport(
       .filter((d): d is ReportDesigner => Boolean(d));
   }
 
-  const templatesReport: ReportTemplateEntry[] = typedTemplates
-    .map((t) => {
-      const subs = (submissionsByTemplate.get(t.id) ?? []).map((s) => ({
-        submission: s,
-        values: valuesBySubmission.get(s.id) ?? [],
-        matrixValues: matrixBySubmission.get(s.id) ?? [],
-      }));
-      return {
-        template: {
-          id: t.id,
-          name: t.name,
-          description: t.description,
-          layout_mode: t.layout_mode,
-          environments: t.environments,
-        },
-        sections: sectionsByTemplate.get(t.id) ?? [],
-        fields: fieldsByTemplate.get(t.id) ?? [],
-        submissions: subs,
-      };
-    })
-;
-
+  const templatesReport: ReportTemplateEntry[] = typedTemplates.map((t) => {
+    const subs = (submissionsByTemplate.get(t.id) ?? []).map((s) => ({
+      submission: s,
+      values: valuesBySubmission.get(s.id) ?? [],
+      matrixValues: matrixBySubmission.get(s.id) ?? [],
+    }));
+    return {
+      template: {
+        id: t.id,
+        name: t.name,
+        description: t.description,
+        layout_mode: t.layout_mode,
+        environments: t.environments,
+      },
+      sections: sectionsByTemplate.get(t.id) ?? [],
+      fields: fieldsByTemplate.get(t.id) ?? [],
+      submissions: subs,
+    };
+  });
   const publicBaseUrl = getPublicBucketBaseUrl(BUCKET);
 
   return {

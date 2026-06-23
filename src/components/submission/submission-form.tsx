@@ -10,14 +10,24 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 
-import type { ClFormField, ClFormSection, ClFormTemplate, FieldOptions } from "@/lib/supabase/types";
+import type {
+  ClFormField,
+  ClFormSection,
+  ClFormTemplate,
+  FieldOptions,
+} from "@/lib/supabase/types";
 
 import {
   type FieldValue,
   type SubmissionMatrixValueInput,
   type SubmissionValueInput,
 } from "@/lib/forms/types";
-import { evaluateVisible, isDisplayOnly, makeFieldKey, parseCheckboxGroup } from "@/lib/forms/utils";
+import {
+  evaluateVisible,
+  isDisplayOnly,
+  makeFieldKey,
+  parseCheckboxGroup,
+} from "@/lib/forms/utils";
 
 import { createSubmission } from "@/app/(dashboard)/submissions/actions";
 
@@ -356,6 +366,7 @@ function MatrixRenderer({
                                   field={field}
                                   value={values[key]}
                                   compact
+                                  radioGroupName={key}
                                   onChange={(patch) => onChange(key, patch)}
                                 />
                               ) : (
@@ -376,4 +387,3 @@ function MatrixRenderer({
     </div>
   );
 }
-
