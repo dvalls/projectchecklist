@@ -137,15 +137,27 @@ export function ProjectPublicLinkDialog({ projectId, initialLinks, templates }: 
   return (
     <>
       {activeLink ? (
-        <Button
-          variant="outline"
-          size="sm"
-          title="Copiar link público"
-          onClick={() => handleCopy(activeLink.token)}
-        >
-          <Copy className="mr-2 h-4 w-4" />
-          Copiar link
-        </Button>
+        <>
+          <Button
+            variant="outline"
+            size="sm"
+            title="Copiar link público"
+            onClick={() => handleCopy(activeLink.token)}
+          >
+            <Copy className="mr-2 h-4 w-4" />
+            Copiar link
+          </Button>
+          <Button variant="outline" size="sm" title="Abrir link público" asChild>
+            <a
+              href={buildUrl(activeLink.token)}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <ExternalLink className="mr-2 h-4 w-4" />
+              Abrir
+            </a>
+          </Button>
+        </>
       ) : null}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
